@@ -1,0 +1,6 @@
+domonic==0.9.10
+html5print>=0.1.2
+ipfshttpclient==0.7.0
+markdown>=3.3
+omegaconf>=2.1.1
+requests>=2.27
