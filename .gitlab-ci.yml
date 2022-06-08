@@ -1,0 +1,59 @@
+image: "registry.gitlab.com/cipres/ipfs-void-storm:latest"
+
+variables:
+  VERSION: "1.0.0"
+  TAGNAME: "continuous-${CI_COMMIT_BRANCH}"
+  WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
+  WHEEL_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
+
+stages:
+  - build
+  - release
+
+build:
+  stage: build
+  only:
+    - master
+  script:
+    - python3 -m pip install --upgrade pip
+    - python3 -m venv venv
+    - source venv/bin/activate
+
+    - pip install wheel
+
+    - python3 setup.py build install
+    - python3 setup.py sdist bdist_wheel
+
+  artifacts:
+    paths:
+      - dist/*.whl
+
+release:
+  image: registry.gitlab.com/gitlab-org/release-cli
+  stage: release
+  only:
+    - master
+  script:
+    - apk add curl
+
+    - >
+      curl
+      --request DELETE
+      --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      --header "PRIVATE-TOKEN: ${GITLAB_PRIVATE_TOKEN}"
+      "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${TAGNAME}"
+
+    - >
+     curl --header "JOB-TOKEN: $CI_JOB_TOKEN"
+     --upload-file
+     dist/${WHEEL_FILENAME}
+     ${WHEEL_ARTIFACT_URL}
+
+    - >
+      release-cli create
+      --name release-${CI_COMMIT_SHA}
+      --description README.md
+      --tag-name $TAGNAME
+      --ref $CI_COMMIT_SHA
+      --assets-link
+      "{\"name\": \"${WHEEL_FILENAME}\", \"filepath\": \"/${WHEEL_FILENAME}\", \"url\": \"${WHEEL_ARTIFACT_URL}\"}"
