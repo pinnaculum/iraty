@@ -1,8 +1,11 @@
 import sys
+import os
 import io
 import argparse
+import tempfile
 import markdown
 import traceback
+import shutil
 from pathlib import Path
 
 from domonic.dom import document
@@ -62,6 +65,107 @@ def convert(node, dom, parent=None):
         pn.appendChild(tag)
 
 
+class Iraty:
+    def __init__(self, ipfs_client, args):
+        self.iclient = ipfs_client
+        self.args = args
+
+    def ipfs_add(self, src):
+        try:
+            ret = self.iclient.add(src, cid_version=1,
+                                   recursive=True)
+            if isinstance(ret, list):
+                entry = ret[-1]
+            else:
+                entry = ret
+
+            return entry['Hash']
+        except Exception as err:
+            print(f'IPFS Error: {err}', file=sys.stderr)
+
+    def output_dom(self, dom, dest: Path = None, fd=None):
+        if dest:
+            output = open(str(dest), 'wb')
+        else:
+            output = fd if fd else io.BytesIO()
+        try:
+            if have_beautifier:
+                out = HTMLBeautifier.beautify(render(dom),
+                                              int(self.args.htmlindent))
+                if output is sys.stdout:
+                    output.write(out)
+                else:
+                    output.write(out.encode())
+            else:
+                if output is sys.stdout:
+                    output.write(f'{dom}')
+                else:
+                    output.write(f'{dom}'.encode())
+
+            if output is not sys.stdout:
+                output.seek(0, 0)
+        except Exception:
+            traceback.print_exc()
+        else:
+            return output
+
+    def process_file(self, path: Path, output=False):
+        dom = html()
+        try:
+            with open(str(path), 'rt') as fd:
+                foc = OmegaConf.load(fd)
+
+                convert(
+                    OmegaConf.to_container(foc, resolve=True),
+                    dom
+                )
+        except Exception:
+            traceback.print_exc()
+            return None
+
+        if output:
+            if self.args.ipfsout:
+                out = self.output_dom(dom)
+                cid = self.ipfs_add(out)
+                if cid:
+                    print(cid, file=sys.stdout)
+            else:
+                self.output_dom(dom, fd=sys.stdout)
+
+        return dom
+
+    def process_directory(self, path: Path):
+        outd = tempfile.mkdtemp()
+        try:
+            for root, dirs, files in os.walk(str(path)):
+                rr = root.replace(str(path), '').lstrip(os.sep)
+
+                for file in files:
+                    fp = Path(root).joinpath(file)
+                    ddest = Path(outd).joinpath(rr)
+                    ddest.mkdir(parents=True, exist_ok=True)
+
+                    if fp.name.endswith('.yaml'):
+                        dest = ddest.joinpath(file.replace('.yaml', '.html'))
+                        dom = self.process_file(fp)
+
+                        if dom:
+                            self.output_dom(dom, dest=dest)
+                    else:
+                        # Copy other files
+                        shutil.copy(fp, str(ddest))
+        except Exception:
+            traceback.print_exc()
+        else:
+            if self.args.ipfsout:
+                cid = self.ipfs_add(outd)
+
+                if cid:
+                    print(cid, file=sys.stdout)
+            else:
+                print(outd, file=sys.stdout)
+
+
 def iraty(args):
     if len(args.input) != 1:
         print('Invalid input arguments', file=sys.stderr)
@@ -78,44 +182,17 @@ def iraty(args):
         # Set global client
         resolvers.ipfs_client = iclient
 
+    ira = Iraty(iclient, args)
     path = Path(filein)
 
-    if not path.is_file():
-        print(f'File {path} does not exist', file=sys.stderr)
+    if not path.exists():
+        print(f'{path} does not exist', file=sys.stderr)
         sys.exit(1)
 
-    dom = html()
-    output = io.BytesIO()
-
-    try:
-        with open(str(path), 'rt') as fd:
-            foc = OmegaConf.load(fd)
-
-            convert(
-                OmegaConf.to_container(foc, resolve=True),
-                dom
-            )
-
-            if have_beautifier:
-                out = HTMLBeautifier.beautify(render(dom),
-                                              int(args.htmlindent))
-                output.write(out.encode())
-            else:
-                output.write(f'{dom}'.encode())
-
-            output.seek(0, 0)
-
-            if args.ipfsout:
-                try:
-                    entry = iclient.add(output, cid_version=1)
-                    print(entry['Hash'])
-                except Exception as err:
-                    print(f'IPFS Error: {err}', file=sys.stderr)
-            else:
-                print(output.getvalue().decode())
-    except Exception:
-        traceback.print_exc()
-        sys.exit(2)
+    if path.is_file():
+        ira.process_file(path, output=True)
+    elif path.is_dir():
+        ira.process_directory(path)
 
 
 def run():

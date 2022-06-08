@@ -7,7 +7,7 @@ of *resolvers* (special functions called by the YAML engine).
 Any text in the document is assumed to be markdown. The tool is designed
 for the dweb (the resulting HTML documents can easily be puslished to IPFS).
 
-# Usage
+# Install
 
 You need python3. Clone this repo and install with:
 
@@ -15,11 +15,13 @@ You need python3. Clone this repo and install with:
 python setup.py build install
 ```
 
-Or install from wheel:
+Or install from the released wheel:
 
 ```sh
 pip install https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl
 ```
+
+# Usage
 
 Convert and print a document to stdout with:
 
@@ -35,9 +37,28 @@ iraty --ipfs document.yaml
 iraty --ipfs document.yaml|ipfs cat
 ```
 
+If you want to use a specific IPFS node (default is *localhost*, port *5001*):
+
+```sh
+iraty --ipfs --ipfs-maddr '/dns/localhost/tcp/5051/http' document.yaml
+```
+
+*iraty* can also process directories. YAML files (files with the *.yaml*
+extension) will be converted. The output folder hierarchy will match the
+input folder hierarchy. The output directory path, or the CID of the
+root IPFS directory (if you use *--ipfs*) is printed to stdout:
+
+```sh
+iraty srcdir
+
+iraty --ipfs srcdir
+
+iraty --ipfs srcdir|ipfs ls
+```
+
 # Examples
 
-A div with some markdown that includes a remote IPFS file, with an image:
+A div with some markdown that includes an embedded IPFS file, with an image:
 
 ```yaml
 body:
