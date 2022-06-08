@@ -9,7 +9,13 @@ from domonic.dom import document
 from domonic.html import html
 from domonic.html import render
 from omegaconf import OmegaConf
-from html5print import HTMLBeautifier
+
+try:
+    from html5print import HTMLBeautifier
+except ImportError:
+    have_beautifier = False
+else:
+    have_beautifier = True
 
 import ipfshttpclient
 from ipfshttpclient import client
@@ -18,7 +24,7 @@ from . import resolvers
 
 
 def assert_v(version: str, minimum: str = '0.4.23',
-             maximum: str = '0.13.0') -> None:
+             maximum: str = '0.15.0') -> None:
     # Don't really care which version you use
     pass
 
@@ -90,9 +96,13 @@ def iraty(args):
                 dom
             )
 
-            out = HTMLBeautifier.beautify(render(dom),
-                                          int(args.htmlindent))
-            output.write(out.encode())
+            if have_beautifier:
+                out = HTMLBeautifier.beautify(render(dom),
+                                              int(args.htmlindent))
+                output.write(out.encode())
+            else:
+                output.write(f'{dom}'.encode())
+
             output.seek(0, 0)
 
             if args.ipfsout:
