@@ -1,11 +1,11 @@
 # iraty
 
 *iraty* is a Python tool to publish web (HTML) documents
-using an easy syntax. Documents are written in YAML and can make use
+using an easy templating syntax. Documents are written in YAML and can make use
 of *resolvers* (special functions called by the YAML engine).
 
-Any text in the document is assumed to be markdown. The tool is designed
-for the dweb (the resulting HTML documents can easily be puslished to IPFS).
+The tool is designed for the dweb, and the HTML documents produced can
+easily be puslished to IPFS.
 
 # Install
 
@@ -44,7 +44,7 @@ iraty --ipfs --ipfs-maddr '/dns/localhost/tcp/5051/http' document.yaml
 ```
 
 *iraty* can also process directories. YAML files (files with the *.yaml*
-extension) will be converted. The output folder hierarchy will match the
+or *.yml* extension) will be converted. The output folder hierarchy will match the
 input folder hierarchy. The output directory path, or the CID of the
 root IPFS directory (if you use *--ipfs*) is printed to stdout:
 
@@ -98,6 +98,24 @@ img:
 ```
 
 ## resolvers
+
+### include
+
+*include* allows you to embed another (yaml) template in the DOM. The
+specified path is relative to the root directory being processed, or relative
+to the directory containing the processed file:
+
+```yaml
+head: ${include:.head.yml}
+```
+
+The structure of the *.head.yml* template will go inside the *head* DOM element.
+However if you don't want to use a subtag, and just need the specified template
+to be included *in situ*, just use the *.* operator:
+
+```yaml
+.: ${include:.head.yml}
+```
 
 ### ipfs_cat
 

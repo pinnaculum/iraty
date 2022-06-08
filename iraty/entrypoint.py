@@ -28,11 +28,18 @@ from . import resolvers
 
 def assert_v(version: str, minimum: str = '0.4.23',
              maximum: str = '0.15.0') -> None:
-    # Don't really care which version you use
+    # Ignore go-ipfs version number (we only use a small subset of the API)
     pass
 
 
 client.assert_version = assert_v
+
+
+def handle_textnode(pn, text: str):
+    if pn.tagName in ['p', 'span']:
+        pn.innerText(markdown.markdown(text))
+    else:
+        pn.innerText(text)
 
 
 def convert(node, dom, parent=None):
@@ -40,29 +47,26 @@ def convert(node, dom, parent=None):
 
     if isinstance(node, dict):
         for elem, n in node.items():
-            if elem.startswith('_'):
+            if len(elem) > 1 and elem.startswith('_'):
                 # Attribute
                 pn.setAttribute(elem.replace('_', ''), n)
+            elif elem in ['raw', '.']:
+                # In-place
+                convert(n, dom, parent=pn)
+                continue
+            elif elem == '_' and isinstance(n, str):
+                # Tag text contents
+                handle_textnode(pn, n)
             else:
+                # Create HTML tag
                 tag = document.createElement(elem)
-
-                if isinstance(n, str) and 0:
-                    htmlized = markdown.markdown(n)
-                    tag.innerText(htmlized)
-
                 pn.appendChild(tag)
 
                 convert(node[elem], dom, parent=tag)
     elif isinstance(node, list):
-        for n in node:
-            tag = document.createElement('span')
-            pn.appendChild(tag)
-            convert(n, dom, parent=tag)
+        [convert(subn, dom, parent=pn) for subn in node]
     elif isinstance(node, str):
-        tag = document.createElement('span')
-        htmlized = markdown.markdown(node)
-        tag.innerText(htmlized)
-        pn.appendChild(tag)
+        handle_textnode(pn, node)
 
 
 class Iraty:
@@ -89,7 +93,7 @@ class Iraty:
         else:
             output = fd if fd else io.BytesIO()
         try:
-            if have_beautifier:
+            if have_beautifier and 0:
                 out = HTMLBeautifier.beautify(render(dom),
                                               int(self.args.htmlindent))
                 if output is sys.stdout:
@@ -145,8 +149,14 @@ class Iraty:
                     ddest = Path(outd).joinpath(rr)
                     ddest.mkdir(parents=True, exist_ok=True)
 
-                    if fp.name.endswith('.yaml'):
-                        dest = ddest.joinpath(file.replace('.yaml', '.html'))
+                    if fp.name.startswith('.'):
+                        # Ignore dot files (reserved)
+                        continue
+
+                    if fp.name.endswith('.yaml') or fp.name.endswith('.yml'):
+                        fname = file.replace('.yaml', '.html').replace(
+                            '.yml', '.html')
+                        dest = ddest.joinpath(fname)
                         dom = self.process_file(fp)
 
                         if dom:
@@ -190,8 +200,10 @@ def iraty(args):
         sys.exit(1)
 
     if path.is_file():
+        resolvers.root_path = path.parent
         ira.process_file(path, output=True)
     elif path.is_dir():
+        resolvers.root_path = path
         ira.process_directory(path)
 
 
