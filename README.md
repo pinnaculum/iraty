@@ -9,10 +9,16 @@ for the dweb (the resulting HTML documents can easily be puslished to IPFS).
 
 # Usage
 
-You need python3. Install with:
+You need python3. Clone this repo and install with:
 
 ```sh
 python setup.py build install
+```
+
+Or install from wheel:
+
+```sh
+pip install https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl
 ```
 
 Convert and print a document to stdout with:
@@ -44,7 +50,7 @@ body:
   - p:
     # h1
 
-    Second 
+    Second paragraph
 
   - img:
       _src: 'https://example.com/someimage.png'
@@ -62,7 +68,8 @@ Tables:
     - td: Four
 ```
 
-An image in base64 from an external IPFS file:
+An image in base64 from an external IPFS file. HTML tag attributes must
+start with *_*:
 
 ```yaml
 img:
