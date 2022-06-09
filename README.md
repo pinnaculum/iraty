@@ -23,6 +23,12 @@ git clone "https://gitlab.com/cipres/iraty.git" && cd iraty
 pip install -e .
 ```
 
+There's also a docker image:
+
+```sh
+sudo docker pull registry.gitlab.com/cipres/iraty:latest
+```
+
 # Usage
 
 Convert and print a document to stdout with:
