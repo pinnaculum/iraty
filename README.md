@@ -15,10 +15,10 @@ You need python3. Clone this repo and install with:
 python setup.py build install
 ```
 
-Or install from the released wheel:
+Or install from the latest released wheel:
 
 ```sh
-pip install https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl
+pip install -U https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl
 ```
 
 # Usage
@@ -41,6 +41,13 @@ If you want to use a specific IPFS node (default is *localhost*, port *5001*):
 
 ```sh
 iraty --ipfs --ipfs-maddr '/dns/localhost/tcp/5051/http' document.yaml
+```
+
+*Remote pinning* is supported via the **--pin-remote** (or **-pr**) switch.
+Specify the name of the remote pinning service registered on your go-ipfs node:
+
+```sh
+iraty --ipfs --pin-remote=pinata document.yaml
 ```
 
 *iraty* can also process directories. YAML files (files with the *.yaml*

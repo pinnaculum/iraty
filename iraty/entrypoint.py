@@ -22,6 +22,7 @@ else:
 
 import ipfshttpclient
 from ipfshttpclient import client
+from ipfshttpclient.exceptions import ErrorResponse
 
 from . import resolvers
 
@@ -87,6 +88,19 @@ class Iraty:
         except Exception as err:
             print(f'IPFS Error: {err}', file=sys.stderr)
 
+    def ipfs_pinremote(self, service, cid):
+        try:
+            resp = self.iclient.pinremote.add(service, cid)
+            assert resp['Status'] == 'pinned'
+        except ErrorResponse as err:
+            print(f'Pin to remote error: {err}', file=sys.stderr)
+            return False
+        except Exception as err:
+            print(f'Unknown Error: {err}', file=sys.stderr)
+            return False
+        else:
+            return True
+
     def output_dom(self, dom, dest: Path = None, fd=None):
         if dest:
             output = open(str(dest), 'wb')
@@ -131,7 +145,12 @@ class Iraty:
             if self.args.ipfsout:
                 out = self.output_dom(dom)
                 cid = self.ipfs_add(out)
+
                 if cid:
+                    if self.args.pintoremote:
+                        # Pin to remote service
+                        self.ipfs_pinremote(self.args.pintoremote, cid)
+
                     print(cid, file=sys.stdout)
             else:
                 self.output_dom(dom, fd=sys.stdout)
@@ -171,7 +190,12 @@ class Iraty:
                 cid = self.ipfs_add(outd)
 
                 if cid:
-                    print(cid, file=sys.stdout)
+                    if self.args.pintoremote:
+                        # Pin to remote service
+                        if self.ipfs_pinremote(self.args.pintoremote, cid):
+                            print(cid, file=sys.stdout)
+                    else:
+                        print(cid, file=sys.stdout)
             else:
                 print(outd, file=sys.stdout)
 
@@ -214,17 +238,28 @@ def run():
         dest='ipfsmaddr',
         default='/dns/localhost/tcp/5001/http',
         help='IPFS daemon multiaddr')
+
     parser.add_argument(
         '--html-indent',
         dest='htmlindent',
         default=4,
         help='HTML indentation space count')
+
     parser.add_argument(
+        '-i',
         '--ipfs',
         dest='ipfsout',
         action='store_true',
         default=False,
         help='Store HTML output to IPFS')
+
+    parser.add_argument(
+        '-pr',
+        '--pin-remote',
+        '--pin-to-remote',
+        dest='pintoremote',
+        default=None,
+        help='Pin webpage/website to a remote IPFS pinning service')
 
     parser.add_argument(nargs=1, dest='input')
 
