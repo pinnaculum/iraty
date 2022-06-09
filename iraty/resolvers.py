@@ -1,8 +1,7 @@
-from yarl import URL
-
 import base64
 import sys
 import urllib.request
+from urllib.parse import urlparse
 
 from datetime import datetime
 
@@ -34,22 +33,22 @@ def yaml_include(path: str):
 
 
 def cat(u: str):
-    url = URL(u)
-
     try:
+        url = urlparse(u)
+
         if url.scheme in ['http', 'https']:
-            with urllib.request.urlopen(str(url)) as response:
+            with urllib.request.urlopen(u) as response:
                 data = response.read()
 
             return data.decode()
         if url.scheme in ['ipfs'] or not url.scheme:
             # ipfs:// or raw cid/path
 
-            if url.scheme and url.host:
+            if url.scheme and url.hostname:
                 if url.path != '/':
-                    path = url.host + url.path
+                    path = url.hostname + url.path
                 else:
-                    path = url.host
+                    path = url.hostname
             else:
                 path = u
 
