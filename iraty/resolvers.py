@@ -1,5 +1,8 @@
+from yarl import URL
+
 import base64
 import sys
+import urllib.request
 
 from datetime import datetime
 
@@ -10,6 +13,10 @@ from omegaconf import OmegaConf
 ipfs_client = None
 root_path = None
 search_paths = None
+
+
+class Irate(Exception):
+    pass
 
 
 def yaml_include(path: str):
@@ -26,27 +33,44 @@ def yaml_include(path: str):
         print(err, file=sys.stderr)
 
 
-def ipfs_cat(path: str):
+def cat(u: str):
+    url = URL(u)
+
     try:
-        data = ipfs_client.cat(path)
-        return data.decode()
-    except Exception:
-        return None
+        if url.scheme in ['http', 'https']:
+            with urllib.request.urlopen(str(url)) as response:
+                data = response.read()
+
+            return data.decode()
+        if url.scheme in ['ipfs'] or not url.scheme:
+            # ipfs:// or raw cid/path
+
+            if url.scheme and url.host:
+                if url.path != '/':
+                    path = url.host + url.path
+                else:
+                    path = url.host
+            else:
+                path = u
+
+            data = ipfs_client.cat(path)
+            return data.decode()
+    except Exception as err:
+        print(f'cat({u}) error: {err}', file=sys.stderr)
+
+        raise Irate(err)
 
 
-def ipfs_cat64(path: str):
-    try:
-        data = ipfs_client.cat(path)
-        return base64.b64encode(data).decode()
-    except Exception:
-        return None
+def cat64(url: str):
+    data = cat(url)
+
+    assert isinstance(data, str)
+    return base64.b64encode(data.encode()).decode()
 
 
 OmegaConf.register_new_resolver("include", yaml_include)
-OmegaConf.register_new_resolver("cat", ipfs_cat)
-OmegaConf.register_new_resolver("ipfs_cat", ipfs_cat)
-OmegaConf.register_new_resolver("cat64", ipfs_cat64)
-OmegaConf.register_new_resolver("ipfs_cat64", ipfs_cat64)
+OmegaConf.register_new_resolver("cat", cat)
+OmegaConf.register_new_resolver("cat64", cat64)
 OmegaConf.register_new_resolver(
     "datenow_iso",
     lambda: datetime.now().isoformat(timespec='seconds', sep=' '))

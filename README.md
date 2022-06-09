@@ -12,7 +12,7 @@ easily be puslished to IPFS.
 You only need python3. Install from the latest released wheel using pip:
 
 ```sh
-pip install --user -U "https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl"
+pip install --user -U "https://gitlab.com/cipres/iraty/-/releases/1.0.0/downloads/iraty-1.0.0-py3-none-any.whl"
 ```
 
 Or clone [the git repo](https://gitlab.com/cipres/iraty) and install it with:
@@ -71,7 +71,7 @@ A div with some markdown that includes an embedded IPFS file, with an image:
 ```yaml
 body:
   div:
-  - >
+  - p:
     # Hello
 
     File contents .. ${cat:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
@@ -95,6 +95,14 @@ Tables:
   - tr:
     - td: Three
     - td: Four
+```
+
+Links (the *_* key sets the inner text of the DOM node):
+
+```yaml
+a:
+  _href: "https://ipfs.io"
+  _: "IPFS is the distributed web"
 ```
 
 An image in base64 from an external IPFS file. HTML tag attributes must
@@ -125,19 +133,21 @@ to be included *in situ*, just use the *.* operator:
 .: ${include:.head.yml}
 ```
 
-### ipfs_cat
+### cat
 
-*ipfs_cat* (or just *cat*) returns the contents (as string) of an IPFS file.
-The first and only argument is an IPFS path or CID.
+*cat* returns the contents (as a string) of an IPFS file or web resource.
+The first and only argument is an IPFS path, an IPFS CID, or an HTTP/HTTPs URL.
 
 ```yaml
 content: ${cat:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
+
+content: ${cat:https://gitlab.com/cipres/iraty/-/raw/master/README.md}
 ```
 
-### ipfs_cat64
+### cat64
 
-*ipfs_cat64* (or just *cat64*) returns the contents in base64 of an IPFS file.
-The first and only argument is an IPFS path or CID.
+*cat64* returns the contents in base64 of an IPFS file or web resource.
+The first and only argument is an IPFS path, an IPFS CID, or an HTTP/HTTPs URL.
 
 ```yaml
 content: ${cat64:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
