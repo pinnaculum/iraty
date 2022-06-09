@@ -9,16 +9,17 @@ easily be puslished to IPFS.
 
 # Install
 
-You need python3. Clone this repo and install with:
+You only need python3. Install from the latest released wheel using pip:
 
 ```sh
-python setup.py build install
+pip install --user -U "https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl"
 ```
 
-Or install from the latest released wheel:
+Or clone [the git repo](https://gitlab.com/cipres/iraty) and install it with:
 
 ```sh
-pip install -U https://gitlab.com/cipres/iraty/-/releases/continuous-master/downloads/iraty-1.0.0-py3-none-any.whl
+git clone "https://gitlab.com/cipres/iraty.git" && cd iraty
+python setup.py build install
 ```
 
 # Usage
