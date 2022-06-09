@@ -211,6 +211,7 @@ def iraty(args):
         iclient = ipfshttpclient.connect(args.ipfsmaddr)
     except Exception as err:
         # Should be fatal ?
+        iclient = None
         print(f'IPFS connection Error: {err}', file=sys.stderr)
     else:
         # Set global client

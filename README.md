@@ -2,7 +2,8 @@
 
 *iraty* is a Python tool to publish web (HTML) documents
 using an easy templating syntax. Documents are written in YAML and can make use
-of *resolvers* (special functions called by the YAML engine).
+of *resolvers* (special functions called by the
+[YAML engine](https://github.com/omry/omegaconf)).
 
 The tool is designed for the dweb, and the HTML documents produced can
 easily be puslished to IPFS.
@@ -19,7 +20,7 @@ Or clone [the git repo](https://gitlab.com/cipres/iraty) and install it with:
 
 ```sh
 git clone "https://gitlab.com/cipres/iraty.git" && cd iraty
-python setup.py build install
+pip install -e .
 ```
 
 # Usage
@@ -113,9 +114,47 @@ img:
   _src: 'data:image/png;base64, ${cat64:QmUEd5oBhJJmb6WZWc7aHrPpcgF8ELEvcxHo6q4M8uWY5Q}'
 ```
 
-## resolvers
+# Resolvers
 
-### include
+## cat
+
+*cat* returns the contents (as a string) of an IPFS file or web resource.
+The first and only argument is an IPFS path, an IPFS CID, or an HTTP/HTTPs URL.
+
+```yaml
+content: ${cat:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
+
+content: ${cat:https://gitlab.com/cipres/iraty/-/raw/master/README.md}
+```
+
+## cat64
+
+*cat64* returns the contents in base64 of an IPFS file or web resource.
+The first and only argument is an IPFS path, an IPFS CID, or an HTTP/HTTPs URL.
+
+```yaml
+content: ${cat64:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
+```
+
+## csum_hex
+
+*csum_hex* returns the checksum as an hexadecimal string for a given resource
+and hashing algorithm.
+
+The first argument is the algorithm, the second argument is the resource URL.
+Use an algorithm from the following list:
+
+```python
+{'blake2s', 'sha3_224', 'sha512', 'blake2b', 'shake_256', 'sha256', 'sha1', 'sha3_256', 'md5', 'sha3_384', 'sha384', 'shake_128', 'sha3_512', 'sha224'}
+```
+
+Example:
+
+```yaml
+p: ${csum_hex:sha512,ipfs://bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+```
+
+## include
 
 *include* allows you to embed another (yaml) template in the DOM. The
 specified path is relative to the root directory being processed, or relative
@@ -133,26 +172,17 @@ to be included *in situ*, just use the *.* operator:
 .: ${include:.head.yml}
 ```
 
-### cat
 
-*cat* returns the contents (as a string) of an IPFS file or web resource.
-The first and only argument is an IPFS path, an IPFS CID, or an HTTP/HTTPs URL.
-
-```yaml
-content: ${cat:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
-
-content: ${cat:https://gitlab.com/cipres/iraty/-/raw/master/README.md}
-```
-
-### cat64
-
-*cat64* returns the contents in base64 of an IPFS file or web resource.
-The first and only argument is an IPFS path, an IPFS CID, or an HTTP/HTTPs URL.
-
-```yaml
-content: ${cat64:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
-```
 
 # Name origin
 
 This tool is named after the succulent French (Basque) cheese called *Ossau-Iraty*.
+
+# Donate
+
+You can make a donation for this project
+[here at Liberapay](https://liberapay.com/galacteek).
+
+# Thanks
+
+A big thanks to everyone involved with [OmegaConf](https://github.com/omry/omegaconf).
