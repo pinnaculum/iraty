@@ -1,5 +1,6 @@
 import sys
 import os
+import os.path
 import io
 import argparse
 import tempfile
@@ -157,20 +158,64 @@ class Iraty:
 
         return dom
 
+    def find_closest_layout(self, fp: Path, root: Path):
+        """
+        Find the closest .layout.yaml file (hierarchy-wise) to
+        the file referenced by fp.
+        """
+        current = fp.parent
+        dirs = [current]
+
+        while current != root:
+            current = current.parent
+            dirs.append(current)
+
+        for dir in dirs:
+            layoutp = dir.joinpath('.layout.yaml')
+
+            if layoutp.is_file():
+                # TODO: check that this is a valid yaml
+                return layoutp
+
     def process_directory(self, path: Path):
-        outd = tempfile.mkdtemp()
+        if self.args.outdir:
+            # TODO: cleanup existing output dir
+            outd = Path(self.args.outdir)
+            outd.mkdir(parents=True, exist_ok=True)
+        else:
+            outd = Path(tempfile.mkdtemp())
+
         try:
             for root, dirs, files in os.walk(str(path)):
                 rr = root.replace(str(path), '').lstrip(os.sep)
 
                 for file in files:
                     fp = Path(root).joinpath(file)
-                    ddest = Path(outd).joinpath(rr)
+                    layoutp = self.find_closest_layout(fp, path)
+
+                    ddest = outd.joinpath(rr)
                     ddest.mkdir(parents=True, exist_ok=True)
 
                     if fp.name.startswith('.'):
                         # Ignore dot files (reserved)
                         continue
+
+                    ldom, blocks = None, []
+                    if layoutp:
+                        # Parse the layout
+                        ldom = self.process_file(layoutp)
+
+                        if ldom:
+                            # Parse declared blocks
+
+                            for node in ldom.iter():
+                                if node.name.startswith('block_'):
+                                    blocks.append(node)
+
+                    def findblock(name):
+                        for blk in blocks:
+                            if blk.name == name:
+                                return blk
 
                     if fp.name.endswith('.yaml') or fp.name.endswith('.yml'):
                         fname = file.replace('.yaml', '.html').replace(
@@ -178,7 +223,22 @@ class Iraty:
                         dest = ddest.joinpath(fname)
                         dom = self.process_file(fp)
 
-                        if dom:
+                        if ldom and len(blocks) > 0:
+                            for node in dom.iter():
+                                if node.name.startswith('block_'):
+                                    blk = findblock(node.name)
+
+                                    if blk is None or blk.parentNode is None:
+                                        continue
+
+                                    # Replace the node
+                                    blk.parentNode.replaceChild(
+                                        node.firstChild, blk)
+
+                        if ldom:
+                            # Layout mode
+                            self.output_dom(ldom, dest=dest)
+                        elif dom:
                             self.output_dom(dom, dest=dest)
                     else:
                         # Copy other files
@@ -187,7 +247,7 @@ class Iraty:
             traceback.print_exc()
         else:
             if self.args.ipfsout:
-                cid = self.ipfs_add(outd)
+                cid = self.ipfs_add(str(outd))
 
                 if cid:
                     if self.args.pintoremote:
@@ -197,7 +257,9 @@ class Iraty:
                     else:
                         print(cid, file=sys.stdout)
             else:
-                print(outd, file=sys.stdout)
+                for root, dirs, files in os.walk(str(outd)):
+                    for file in files:
+                        print(os.path.join(root, file), file=sys.stdout)
 
 
 def iraty(args):
@@ -253,6 +315,13 @@ def run():
         action='store_true',
         default=False,
         help='Store HTML output to IPFS')
+
+    parser.add_argument(
+        '-o',
+        '--out',
+        dest='outdir',
+        default='public',
+        help='Output directory path (default: "public")')
 
     parser.add_argument(
         '-pr',

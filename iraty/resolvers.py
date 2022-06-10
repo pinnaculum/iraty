@@ -90,10 +90,15 @@ def checksum_hex(algo: str, ref: str):
         raise Irate(f'Empty object: {ref}')
 
 
+def block(bn: str):
+    return OmegaConf.create({f'block_{bn}': None})
+
+
+OmegaConf.register_new_resolver("block", block)
 OmegaConf.register_new_resolver("csum_hex", checksum_hex)
 OmegaConf.register_new_resolver("include", yaml_include)
 OmegaConf.register_new_resolver("cat", cat)
 OmegaConf.register_new_resolver("cat64", cat64)
 OmegaConf.register_new_resolver(
-    "datenow_iso",
+    "dtnow_iso",
     lambda: datetime.now().isoformat(timespec='seconds', sep=' '))

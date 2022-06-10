@@ -1,0 +1,8 @@
+body:
+  # Paragraph
+  p: Today is **${dtnow_iso:}**
+
+  # Link
+  a:
+    _href: "https://ipfs.io"
+    _: "IPFS is the distributed web"

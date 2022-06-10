@@ -71,6 +71,8 @@ iraty --ipfs srcdir
 iraty --ipfs srcdir|ipfs ls
 ```
 
+Layouts are supported, look at the *block* resolver's documentation below.
+
 # Examples
 
 A div with some markdown that includes an embedded IPFS file, with an image:
@@ -121,6 +123,32 @@ img:
 ```
 
 # Resolvers
+
+## block
+
+Declares a block. This is used inside a layout file called **.layout.yaml**.
+This allows you to define a general layout for your website and not
+have to declare the document structure over and over again.
+
+**.layout.yaml**:
+
+```yaml
+div: ${block:b1}
+```
+
+Your templates can then declare the block that will be replaced inside
+the layout.
+
+**section.yaml**:
+
+```yaml
+block_b1:
+  p:
+    The contents of block *b1*
+```
+
+*Note*: There is no safe-check on whether a block has already been defined or
+not. Only the first matching block will be substituted.
 
 ## cat
 
