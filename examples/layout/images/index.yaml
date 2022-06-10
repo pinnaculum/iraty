@@ -1,0 +1,7 @@
+block_b1:
+  img:
+    _src: cheese.png
+
+block_b2:
+  img:
+    _src: ipfs.png

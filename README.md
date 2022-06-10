@@ -60,20 +60,26 @@ iraty --ipfs --pin-remote=pinata document.yaml
 
 *iraty* can also process directories. YAML files (files with the *.yaml*
 or *.yml* extension) will be converted. The output folder hierarchy will match the
-input folder hierarchy. The output directory path, or the CID of the
-root IPFS directory (if you use *--ipfs*) is printed to stdout:
+input folder hierarchy. The output directory path by default is **public**
+(use **-o** to set another output directory).
+If you use **--ipfs** or **-i**, the CID of the root IPFS directory is printed to stdout.
 
 ```sh
 iraty srcdir
+
+iraty -o html srcdir
 
 iraty --ipfs srcdir
 
 iraty --ipfs srcdir|ipfs ls
 ```
 
-Layouts are supported, look at the *block* resolver's documentation below.
+Layouts are supported, look at the *block* resolver's documentation below and
+checkout [the layout example](https://gitlab.com/cipres/iraty/-/tree/master/examples/layout).
 
 # Examples
+
+Take a look [at the examples](https://gitlab.com/cipres/iraty/-/tree/master/examples).
 
 A div with some markdown that includes an embedded IPFS file, with an image:
 

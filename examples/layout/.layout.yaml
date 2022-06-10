@@ -1,0 +1,10 @@
+body:
+  # A left-floating div embedding block 'b1'
+  - div:
+      _style: 'float: left; max-width: 50%'
+      .: ${block:b1}
+
+  # A right-floating div embedding block 'b2'
+  - div:
+      _style: 'float: right; max-width: 50%'
+      .: ${block:b2}

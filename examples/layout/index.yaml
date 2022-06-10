@@ -1,0 +1,17 @@
+block_b1:
+  div:
+    - h1:
+        _: Layout example
+
+    - ul:
+      - li:
+          a:
+            _href: 'article/index.html'
+            _: "Articles side-by-side"
+
+      - li:
+          a:
+            _href: 'images/index.html'
+            _: "Images left and right"
+
+block_b2: ''
