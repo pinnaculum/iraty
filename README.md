@@ -1,12 +1,13 @@
 # iraty
 
-*iraty* is a Python tool to publish web (HTML) documents
-using an easy templating syntax. Documents are written in YAML and can make use
+*iraty* is a Python tool to easily create and publish static websites
+using a simple template syntax. Documents are written in YAML and can make use
 of *resolvers* (special functions called by the
 [YAML engine](https://github.com/omry/omegaconf)).
 
-The tool is designed for the dweb, and the HTML documents produced can
-easily be puslished to IPFS.
+This tool is designed for the distributed web, and the HTML documents produced can
+easily be puslished to IPFS. Because YAML enforces indentation, the structure
+of your documents is easy to read and this lets you concentrate on the content.
 
 # Install
 
@@ -64,8 +65,14 @@ input folder hierarchy. The output directory path by default is **public**
 (use **-o** to set another output directory).
 If you use **--ipfs** or **-i**, the CID of the root IPFS directory is printed to stdout.
 
+If you want to serve the website over HTTP on your machine, use
+**--serve** or **-s**, and set the HTTP port with **-p** (the default port
+is TCP port: *8000*).
+
 ```sh
 iraty srcdir
+
+iraty --serve -p 9000 srcdir
 
 iraty -o html srcdir
 
@@ -155,6 +162,15 @@ block_b1:
 
 *Note*: There is no safe-check on whether a block has already been defined or
 not. Only the first matching block will be substituted.
+
+## dtnow_iso
+
+Returns the current date and time.
+
+```yaml
+p: Current date and time ${dtnow_iso:}
+```
+
 
 ## cat
 

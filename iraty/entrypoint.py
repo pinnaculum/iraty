@@ -7,6 +7,9 @@ import tempfile
 import markdown
 import traceback
 import shutil
+import functools
+import http.server
+import socketserver
 from pathlib import Path
 
 from domonic.dom import document
@@ -35,6 +38,22 @@ def assert_v(version: str, minimum: str = '0.4.23',
 
 
 client.assert_version = assert_v
+
+
+def http_serve(directory: Path, port=8000):
+    """
+    Serve via HTTP the specified directory on the given TCP port
+    """
+
+    Handler = functools.partial(
+        http.server.SimpleHTTPRequestHandler,
+        directory=str(directory)
+    )
+
+    with socketserver.TCPServer(("", port), Handler) as httpd:
+        print(f'Serving via HTTP at: http://localhost:{port}', file=sys.stdout)
+
+        httpd.serve_forever()
 
 
 def handle_textnode(pn, text: str):
@@ -257,9 +276,12 @@ class Iraty:
                     else:
                         print(cid, file=sys.stdout)
             else:
-                for root, dirs, files in os.walk(str(outd)):
-                    for file in files:
-                        print(os.path.join(root, file), file=sys.stdout)
+                if self.args.httpserve:
+                    http_serve(outd, port=self.args.httpport)
+                else:
+                    for root, dirs, files in os.walk(str(outd)):
+                        for file in files:
+                            print(os.path.join(root, file), file=sys.stdout)
 
 
 def iraty(args):
@@ -315,6 +337,22 @@ def run():
         action='store_true',
         default=False,
         help='Store HTML output to IPFS')
+
+    parser.add_argument(
+        '-s',
+        '--serve',
+        dest='httpserve',
+        action='store_true',
+        default=False,
+        help='Serve website via HTTP')
+
+    parser.add_argument(
+        '-p',
+        '--port',
+        dest='httpport',
+        type=int,
+        default=8000,
+        help='TCP port for the HTTP service')
 
     parser.add_argument(
         '-o',
