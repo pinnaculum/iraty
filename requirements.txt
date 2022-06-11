@@ -1,5 +1,6 @@
 domonic==0.9.10
 ipfshttpclient @ git+https://gitlab.com/cipres/py-ipfs-http-client.git@pinremote
+Jinja2>=3.1.2
 markdown>=3.3
 omegaconf>=2.1.1
 requests==2.27.1

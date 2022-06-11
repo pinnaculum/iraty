@@ -16,6 +16,7 @@ from domonic.dom import document
 from domonic.html import html
 from domonic.html import render
 from omegaconf import OmegaConf
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 try:
     from html5print import HTMLBeautifier
@@ -24,11 +25,16 @@ except ImportError:
 else:
     have_beautifier = True
 
+
 import ipfshttpclient
 from ipfshttpclient import client
 from ipfshttpclient.exceptions import ErrorResponse
 
 from . import resolvers
+
+
+def is_str(obj):
+    return isinstance(obj, str)
 
 
 def assert_v(version: str, minimum: str = '0.4.23',
@@ -63,6 +69,9 @@ def handle_textnode(pn, text: str):
         pn.innerText(text)
 
 
+jenv = Environment(autoescape=select_autoescape())
+
+
 def convert(node, dom, parent=None):
     pn = parent if parent is not None else dom
 
@@ -75,9 +84,28 @@ def convert(node, dom, parent=None):
                 # In-place
                 convert(n, dom, parent=pn)
                 continue
-            elif elem == '_' and isinstance(n, str):
+            elif elem == '_' and is_str(n):
                 # Tag text contents
                 handle_textnode(pn, n)
+            elif elem == 'jinja':
+                args = {}
+
+                if is_str(n):
+                    tmpl = jenv.from_string(n)
+                elif isinstance(n, dict):
+                    args = n.get('with', {})
+                    tpath = n.get('from')
+                    template = n.get('template')
+
+                    if is_str(tpath):
+                        tmpl = jenv.get_template(tpath)
+                    elif is_str(template):
+                        tmpl = jenv.from_string(template)
+
+                if tmpl:
+                    pn.appendChild(
+                        document.createTextNode(tmpl.render(**args))
+                    )
             else:
                 # Create HTML tag
                 tag = document.createElement(elem)
@@ -310,9 +338,11 @@ def iraty(args):
 
     if path.is_file():
         resolvers.root_path = path.parent
+        jenv.loader = FileSystemLoader(str(path.parent))
         ira.process_file(path, output=True)
     elif path.is_dir():
         resolvers.root_path = path
+        jenv.loader = FileSystemLoader(str(path))
         ira.process_directory(path)
 
 

@@ -17,11 +17,12 @@ found_packages = find_packages(exclude=['tests', 'tests.*'])
 setup(
     name='iraty',
     version='1.0.0',
-    license='GPL3',
+    license='MIT',
     author='cipres',
     url='https://gitlab.com/cipres/iraty',
     description='iraty',
     long_description=long_description,
+    license_files=['LICENSE'],
     include_package_data=True,
     packages=found_packages,
     install_requires=install_reqs,
@@ -34,13 +35,13 @@ setup(
         'Development Status :: 4 - Beta',
         'Natural Language :: English',
         'Operating System :: OS Independent',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-        'Topic :: System :: Filesystems',
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9'
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10'
     ],
     keywords=[
         'yaml',
