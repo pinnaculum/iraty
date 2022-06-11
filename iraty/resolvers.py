@@ -19,7 +19,19 @@ class Irate(Exception):
     pass
 
 
-def yaml_include(path: str):
+def include(path: str):
+    """
+    Include another YAML file and render it.
+
+    :param path: The path to the YAML file
+    :type path: str
+
+    Examples:
+
+    .: ${include:.banner.yml}
+    .: ${include:dir1/.article.yml}
+    """
+
     try:
         assert root_path is not None
 
@@ -62,6 +74,18 @@ def cat_raw(u: str):
 
 
 def cat(url: str):
+    """
+    Returns the contents (as string) of the requested resource.
+
+    :param url: The resource URL (http, https or ipfs)
+    :type url: str
+    :rtype: str
+
+    Examples:
+
+    p: ${cat:ipns://ipfs.io}
+    """
+
     data = cat_raw(url)
 
     assert isinstance(data, bytes)
@@ -69,34 +93,72 @@ def cat(url: str):
 
 
 def cat64(url: str):
+    """
+    Returns the base64-encoded content (as string) of the requested resource.
+
+    :param url: The resource URL (http, https or ipfs)
+    :type url: str
+    :rtype: str
+
+    Examples:
+
+    span: ${cat:bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+    p: ${cat64:ipns://ipfs.io}
+    """
+
     data = cat_raw(url)
 
     assert isinstance(data, bytes)
     return base64.b64encode(data).decode()
 
 
-def checksum_hex(algo: str, ref: str):
+def csum_hex(algo: str, url: str):
+    """
+    Returns the hexadecimal checksum of a remote or local file for the
+    specified hashing algorithm.
+
+    :param algo: The hashing algorithm
+    :type algo: str
+    :param url: The resource URL (http, https or ipfs)
+    :type url: str
+
+    Example:
+
+    span: ${csum_hex:sha512,bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+    """
+
     if algo not in hashlib.algorithms_guaranteed:
         raise Irate(f'Algorithm {algo} is not supported')
 
     h = hashlib.new(algo)
 
-    data = cat_raw(ref)
+    data = cat_raw(url)
 
     if data:
         h.update(data)
         return h.hexdigest()
     else:
-        raise Irate(f'Empty object: {ref}')
+        raise Irate(f'Empty object: {url}')
 
 
-def block(bn: str):
-    return OmegaConf.create({f'block_{bn}': None})
+def block(block_name: str):
+    """
+    Create a block in a layout
+
+    :param block_name: The name of the block to create
+    :type block_name: str
+
+    Example:
+
+    ${block:rightdiv}
+    ${block:top}
+    """
+    return OmegaConf.create({f'block_{block_name}': None})
 
 
 OmegaConf.register_new_resolver("block", block)
-OmegaConf.register_new_resolver("csum_hex", checksum_hex)
-OmegaConf.register_new_resolver("include", yaml_include)
+OmegaConf.register_new_resolver("csum_hex", csum_hex)
+OmegaConf.register_new_resolver("include", include)
 OmegaConf.register_new_resolver("cat", cat)
 OmegaConf.register_new_resolver("cat64", cat64)
 OmegaConf.register_new_resolver(

@@ -26,6 +26,12 @@ setup(
     include_package_data=True,
     packages=found_packages,
     install_requires=install_reqs,
+    package_data={
+        'iraty.themes': [
+            'attricss/*/*.css',
+            '*/*.css'
+        ]
+    },
     entry_points={
         'console_scripts': [
             'iraty = iraty.entrypoint:run'

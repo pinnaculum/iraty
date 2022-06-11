@@ -32,53 +32,62 @@ sudo docker pull registry.gitlab.com/cipres/iraty:latest
 
 # Usage
 
-Convert and print a document to stdout with:
+The following commands are supported:
+
+* **run**: generate the website
+* **serve**: generate the website and serve it over HTTP
+* **list-resolvers**: list all available resolvers and their documentation
+* **list-themes**: list all available themes
+
+The **run** command accepts a directory or single file. YAML files (files with
+the *.yaml* or *.yml* extension) inside the source directory will be converted.
+The output directory path by default is **public**
+(use **-o** to set another output directory).
+If you use **--ipfs** or **-i**, the website will be imported to IPFS and
+the CID of the root IPFS directory is printed to stdout.
+Use **--theme** or **-t** to change the theme (the default theme is
+*mercury*, use **-t null** to use no theme).
 
 ```sh
-iraty document.yaml
+iraty run site
+iraty --theme=sakura-dark -o html run site
+
+iraty --ipfs run site
+iraty --ipfs run site|ipfs ls
 ```
 
-Convert and import a document to IPFS (the CID is printed on the console):
+If you want to serve the website over HTTP on your machine, use
+**serve**, and set the HTTP port with **-p** (the default is TCP port: *8000*).
 
 ```sh
-iraty --ipfs document.yaml
-
-iraty --ipfs document.yaml|ipfs cat
+iraty -p 9000 serve site
 ```
 
-If you want to use a specific IPFS node (default is *localhost*, port *5001*):
+If you want to use a specific IPFS node (the default is *localhost*, port *5001*):
 
 ```sh
-iraty --ipfs --ipfs-maddr '/dns/localhost/tcp/5051/http' document.yaml
+iraty -i --ipfs-maddr '/dns/localhost/tcp/5051/http' run site
 ```
 
 *Remote pinning* is supported via the **--pin-remote** (or **-pr**) switch.
 Specify the name of the remote pinning service registered on your go-ipfs node:
 
 ```sh
-iraty --ipfs --pin-remote=pinata document.yaml
+iraty -i --pin-remote=pinata run site
 ```
 
-*iraty* can also process directories. YAML files (files with the *.yaml*
-or *.yml* extension) will be converted. The output folder hierarchy will match the
-input folder hierarchy. The output directory path by default is **public**
-(use **-o** to set another output directory).
-If you use **--ipfs** or **-i**, the CID of the root IPFS directory is printed to stdout.
-
-If you want to serve the website over HTTP on your machine, use
-**--serve** or **-s**, and set the HTTP port with **-p** (the default port
-is TCP port: *8000*).
+You can also pass a file. Convert and print a document to stdout with:
 
 ```sh
-iraty srcdir
+iraty run document.yaml
+iraty -t sakura-dark run document.yaml
+```
 
-iraty --serve -p 9000 srcdir
+Convert and import a document to IPFS (the CID is printed on the console):
 
-iraty -o html srcdir
-
-iraty --ipfs srcdir
-
-iraty --ipfs srcdir|ipfs ls
+```sh
+iraty -i run document.yaml
+iraty -i run document.yaml|ipfs cat
 ```
 
 Layouts are supported, look at the *block* resolver's documentation below and
@@ -125,6 +134,24 @@ Links (the *_* key sets the inner text of the DOM node):
 a:
   _href: "https://ipfs.io"
   _: "IPFS is the distributed web"
+```
+
+Embedding a [jinja2 template](https://gitlab.com/cipres/iraty/-/tree/master/examples/jinja):
+
+```yaml
+body:
+  # Jinja template from string (passing variables)
+  - jinja:
+      template: |-
+        <div>
+
+        {% for i in range(num) %}
+          <p>Iteration: {{ i }}</p>
+        {% endfor %}
+
+        </div>
+      with:
+        num: 5
 ```
 
 An image in base64 from an external IPFS file. HTML tag attributes must
