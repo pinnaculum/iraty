@@ -1,0 +1,19 @@
+# This example shows how to use the 'cat' resolver
+
+body:
+  # pulls some markdown from a file via HTTPs
+  - p: ${cat:https://gitlab.com/cipres/iraty/-/raw/master/README.md}
+
+  # IPFS CID
+  - p: |-
+      Just with a CID: ${cat:bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+
+  # ipfs:// URL
+  - p: |-
+      With an IPFS URL: ${cat:ipfs://bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+
+  # base64 with ipfs://
+  - p: ${cat64:ipfs://bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+
+  # sha512 hex checksum with ipfs://
+  - p: ${csum_hex:sha512,ipfs://bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}

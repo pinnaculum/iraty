@@ -1,0 +1,31 @@
+# This example shows how to embed Jinja2 templates
+
+body:
+  # Jinja template from string (no variables passed)
+  - jinja: |-
+      <div>
+
+      {% for i in range(10) %}
+        <p>Iteration: {{ i }}</p>
+      {% endfor %}
+
+      </div>
+
+  # Jinja template from string (passing variables)
+  - jinja:
+      template: |-
+        <div>
+
+        {% for i in range(num) %}
+          <p>Iteration: {{ i }}</p>
+        {% endfor %}
+
+        </div>
+      with:
+        num: 5
+
+  # Jinja template from file (passing variables)
+  - jinja:
+      from: iter.jinja2
+      with:
+        num: 2
