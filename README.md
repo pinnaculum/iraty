@@ -5,9 +5,11 @@ using a simple template syntax. Documents are written in YAML and can make use
 of *resolvers* (special functions called by the
 [YAML engine](https://github.com/omry/omegaconf)).
 
-This tool is designed for the distributed web, and the HTML documents produced can
+This tool is designed with the distributed web in mind (but you can run it in
+a *standalone* mode), and the HTML documents produced can
 easily be puslished to IPFS. Because YAML enforces indentation, the structure
 of your documents is easy to read and this lets you concentrate on the content.
+A collection of *classless* CSS themes is provided to make styling easy.
 
 *If you think that using bits of YAML to create websites is insane and totally
 stupid, you'll feel right at home here.*
@@ -27,7 +29,7 @@ git clone "https://gitlab.com/cipres/iraty.git" && cd iraty
 pip install -e .
 ```
 
-There's also a docker image:
+There's also a docker image (see [how to run it with docker](#docker)):
 
 ```sh
 sudo docker pull registry.gitlab.com/cipres/iraty:latest
@@ -104,6 +106,15 @@ iraty -i run document.yaml|ipfs cat
 
 Layouts are supported, look at the *block* resolver's documentation below and
 checkout [the layout example](https://gitlab.com/cipres/iraty/-/tree/master/examples/layout).
+
+# Docker
+
+The only difference with Docker is that you have to create a volume (here we
+generate the site from *$HOME/site* to *$HOME/public*):
+
+```sh
+sudo docker run -v $HOME:/h -t registry.gitlab.com/cipres/iraty:latest -o /h/public run /h/site
+```
 
 # Examples
 
@@ -281,3 +292,9 @@ You can make a donation for this project
 # Thanks
 
 A big thanks to everyone involved with [OmegaConf](https://github.com/omry/omegaconf).
+Several *classless* CSS stylesheets are included in the repository:
+
+- [classlesscss](https://github.com/emareg/classlesscss)
+- [sakura](https://github.com/oxalorg/sakura)
+- [MercuryCSS](https://github.com/wmeredith/MercuryCSS)
+- [water.css](https://github.com/kognise/water.css)
