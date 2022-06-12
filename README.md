@@ -19,7 +19,7 @@ stupid, you'll feel right at home here.*
 You only need python3. Install from the latest released wheel using pip:
 
 ```sh
-pip install --user -U "https://gitlab.com/cipres/iraty/-/releases/1.0.0/downloads/iraty-1.0.0-py3-none-any.whl"
+pip install --user -U "https://gitlab.com/cipres/iraty/-/releases/1.1.0/downloads/iraty-1.1.0-py3-none-any.whl"
 ```
 
 Or clone [the git repo](https://gitlab.com/cipres/iraty) and install it with:
@@ -40,6 +40,8 @@ sudo docker pull registry.gitlab.com/cipres/iraty:latest
 The following commands are supported:
 
 * **run**: generate the website
+* **ipfs-deploy**: same as **run**, but always imports to IPFS
+* **node-config** (or **nc**): configure an IPFS node (the default node is *local*)
 * **serve**: generate the website and serve it over HTTP
 * **list-resolvers**: list all available resolvers and their documentation
 * **list-themes**: list all available themes
@@ -61,24 +63,37 @@ iraty --ipfs run site
 iraty --ipfs run site|ipfs ls
 ```
 
+Create a new config for an IPFS node with the **node-config** command
+(this will open your *EDITOR*), and specify the node you want to use
+with **--node**. The default IPFS node configuration is called *local*.
+
+```sh
+iraty node-config ripfs1
+iraty --node=ripfs1 ipfs-deploy site
+```
+
 If you want to serve the website over HTTP on your machine, use
-**serve**, and set the HTTP port with **-p** (the default is TCP port: *8000*).
+**serve**, and set the HTTP port with **--port** (the default is TCP port: *8000*).
 
 ```sh
-iraty -p 9000 serve site
+iraty --port 9000 serve site
 ```
 
-If you want to use a specific IPFS node (the default is *localhost*, port *5001*):
+If you want to force the use of a specific IPFS node (will soon be
+deprecated by **--node** and **node-config**):
 
 ```sh
-iraty -i --ipfs-maddr '/dns/localhost/tcp/5051/http' run site
+iraty --ipfs-maddr '/dns/localhost/tcp/5051/http' ipfs-deploy site
 ```
 
-*Remote pinning* is supported via the **--pin-remote** (or **-pr**) switch.
-Specify the name of the remote pinning service registered on your go-ipfs node:
+*Remote pinning* is supported via the **--pin-remote** (or **--pr**) switch.
+Specify the name of the remote pinning service registered on your go-ipfs node
+with **-rps** (otherwise it will use the *default RPS* specified in the node's
+configuration):
 
 ```sh
-iraty -i --pin-remote=pinata run site
+iraty -i --pin-remote run site
+iraty --pr --rps=pinata2 ipfs-deploy site
 ```
 
 *iraty* caches the configuration for your site in a file called **.iraty.yaml**.

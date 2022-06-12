@@ -8,8 +8,15 @@ def run():
     parser.add_argument(
         '--ipfs-maddr',
         dest='ipfsmaddr',
-        default='/dns/localhost/tcp/5001/http',
-        help='IPFS daemon multiaddr')
+        default=None,
+        help='Use a specific IPFS daemon multiaddr')
+
+    parser.add_argument(
+        '--node',
+        '--ipfs-node',
+        dest='ipfs_node',
+        default='local',
+        help='Configured IPFS node name to use (default: "local")')
 
     parser.add_argument(
         '--html-indent',
@@ -34,8 +41,8 @@ def run():
         help='Serve website via HTTP')
 
     parser.add_argument(
-        '-p',
         '--port',
+        '--serve-port',
         dest='httpport',
         type=int,
         default=8000,
@@ -70,16 +77,23 @@ def run():
         help='Restore last saved site configuration (.iraty.yaml)')
 
     parser.add_argument(
-        '-pr',
+        '--pr',
         '--pin-remote',
         '--pin-to-remote',
         dest='pintoremote',
+        action='store_true',
+        default=False,
+        help='Pin webpage/website to the IPFS remote pinning service')
+
+    parser.add_argument(
+        '--rps',
+        dest='rps_name',
         default=None,
-        help='Pin webpage/website to a remote IPFS pinning service')
+        help='Use a specific remote pinning service (RPS)')
 
     parser.add_argument(
         nargs=1, default='run', dest='cmd',
-        help='Command: run, serve, list-resolvers, list-themes'
+        help='Command: run, serve, list-resolvers, list-themes, node-config'
     )
     parser.add_argument(nargs='*', dest='input')
 

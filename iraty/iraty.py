@@ -20,6 +20,10 @@ from omegaconf import OmegaConf
 from omegaconf.basecontainer import BaseContainer
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from .config import node_get_config
+from .config import node_configure
+from .config import node_configure_default
+
 try:
     from html5print import HTMLBeautifier
 except ImportError:
@@ -33,6 +37,7 @@ from ipfshttpclient import client
 from ipfshttpclient.exceptions import ErrorResponse
 
 from . import resolvers
+from . import appdirs
 
 
 def is_str(obj):
@@ -165,7 +170,7 @@ class IratySiteConfig:
             'output_path': self.args.outdir,
             'ipfs_output': self.args.ipfsout,
             'ipfs_maddr': self.args.ipfsmaddr,
-            'ipfs_rps_name': self.args.pintoremote,
+            'ipfs_rps_name': self.args.rps_name,
             'http_serve_port': self.args.httpport
         })
 
@@ -175,9 +180,15 @@ class IratySiteConfig:
 
 
 class Iraty:
-    def __init__(self, command, input_path, ipfs_client, args):
+    def __init__(self,
+                 command,
+                 input_path,
+                 ipfs_client,
+                 ipfs_node_cfg,
+                 args):
         self.command = command
         self.iclient = ipfs_client
+        self.ipfs_node_cfg = ipfs_node_cfg
         self.args = args
         self.input_path = input_path
 
@@ -308,20 +319,29 @@ class Iraty:
             return None
 
         if output:
-            if self.sitecfg.c.ipfs_output:
+            if self.sitecfg.c.ipfs_output or self.command == 'ipfs-deploy':
                 out = self.output_dom(dom)
                 cid = self.ipfs_add(out)
 
                 if cid:
-                    if self.sitecfg.c.ipfs_rps_name:
+                    rps = self.get_target_rps()
+                    if rps and self.args.pintoremote:
                         # Pin to remote service
-                        self.ipfs_pinremote(self.sitecfg.c.ipfs_rps_name, cid)
+                        self.ipfs_pinremote(rps, cid)
 
                     print(cid, file=sys.stdout)
             else:
                 self.output_dom(dom, fd=sys.stdout)
 
         return dom
+
+    def get_target_rps(self):
+        rps = self.ipfs_node_cfg.get('ipfs_rps_default')
+
+        if is_str(rps):
+            return rps
+        elif self.sitecfg.c.ipfs_rps_name:
+            return self.sitecfg.c.ipfs_rps_name
 
     def find_closest_layout(self, fp: Path, root: Path):
         """
@@ -404,14 +424,14 @@ class Iraty:
         except Exception:
             traceback.print_exc()
         else:
-            if self.sitecfg.c.ipfs_output:
+            if self.sitecfg.c.ipfs_output or self.command == 'ipfs-deploy':
                 cid = self.ipfs_add(str(self.outdirp))
 
                 if cid:
-                    if self.sitecfg.c.ipfs_rps_name:
+                    rps = self.get_target_rps()
+                    if rps and self.args.pintoremote:
                         # Pin to remote service
-                        if self.ipfs_pinremote(self.sitecfg.c.ipfs_rps_name,
-                                               cid):
+                        if self.ipfs_pinremote(rps, cid):
                             print(cid, file=sys.stdout)
                     else:
                         print(cid, file=sys.stdout)
@@ -470,6 +490,13 @@ def list_resolvers():
 
 
 def iraty(args):
+    config_dir = Path(appdirs.user_config_dir('iraty'))
+    config_dir.mkdir(parents=True, exist_ok=True)
+    nodes_config_dir = config_dir.joinpath('ipfs-nodes')
+    nodes_config_dir.mkdir(parents=True, exist_ok=True)
+
+    node_configure_default(config_dir, nodes_config_dir)
+
     command = args.cmd.pop()
 
     if command == 'list-themes':
@@ -480,14 +507,25 @@ def iraty(args):
         list_resolvers()
         sys.exit(0)
 
+    elif command in ['node-config', 'nc']:
+        node_configure(args, config_dir, nodes_config_dir)
+        sys.exit(0)
+
     if len(args.input) != 1:
         print('Invalid input arguments', file=sys.stderr)
+        sys.exit(1)
+
+    ncp, node_cfg = node_get_config(nodes_config_dir, args.ipfs_node)
+
+    if not node_cfg:
+        print(f'Unconfigured IPFS node: {args.ipfs_node}', file=sys.stderr)
         sys.exit(1)
 
     filein = args.input[0]
 
     try:
-        iclient = ipfshttpclient.connect(args.ipfsmaddr)
+        maddr = args.ipfsmaddr if args.ipfsmaddr else node_cfg.ipfs_api_maddr
+        iclient = ipfshttpclient.connect(maddr)
     except Exception as err:
         # Should be fatal ?
         iclient = None
@@ -497,7 +535,7 @@ def iraty(args):
         resolvers.ipfs_client = iclient
 
     input_path = Path(filein)
-    ira = Iraty(command, input_path, iclient, args)
+    ira = Iraty(command, input_path, iclient, node_cfg, args)
     ira.start()
 
     if not input_path.exists():

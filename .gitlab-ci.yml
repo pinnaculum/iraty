@@ -1,7 +1,7 @@
 image: "registry.gitlab.com/cipres/ipfs-void-storm:latest"
 
 variables:
-  VERSION: "1.0.0"
+  VERSION: "1.1.0"
   TAGNAME: "${VERSION}"
   WHEEL_FILENAME: "${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
   WHEEL_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
