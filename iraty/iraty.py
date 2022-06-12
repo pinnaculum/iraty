@@ -560,7 +560,44 @@ def iraty(args):
         sys.exit(0)
 
     elif command in ['node-config', 'nc']:
-        node_configure(args, config_dir, nodes_config_dir)
+        cfg = node_configure(args, config_dir, nodes_config_dir)
+
+        if not cfg:
+            print('Error configuring node', file=sys.stderr)
+            sys.exit(1)
+
+        print('Connect to IPFS node and register '
+              'remote pinning services ? [y/n]')
+
+        resp = sys.stdin.readline().strip()
+
+        if resp.lower() == 'y':
+            # Register configured pinning services
+            try:
+                count = 0
+                ic = ipfshttpclient.connect(cfg.ipfs_api_maddr)
+
+                services = ic.pinremote.service_ls()
+                csrvs = [c['Service'] for c in services['RemoteServices']]
+
+                for name, rpsc in cfg.ipfs_rps_cfg.items():
+                    ep, key = rpsc.get('endpoint'), rpsc.get('key')
+
+                    if is_str(key) and name not in csrvs:
+                        print(f'=> Adding RPS: {name} (endpoint: {ep})')
+
+                        ic.pinremote.service_add(
+                            name, ep, key
+                        )
+
+                        count += 1
+
+                print(f'=> Registered {count} service(s)')
+            except Exception as err:
+                print(f'Error configuring remote pinning: {err}',
+                      file=sys.stderr)
+                sys.exit(1)
+
         sys.exit(0)
 
     if len(args.input) != 1:

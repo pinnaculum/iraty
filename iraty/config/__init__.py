@@ -46,9 +46,10 @@ def node_configure_default(config_path: Path, nodes_config_path: Path):
 
 def node_configure(args, config_path: Path, nodes_config_path: Path):
     template = ipfs_nodecfg_yaml_template
+
     if len(args.input) != 1:
         print('Please specify a node name', file=sys.stderr)
-        return 1
+        return None
 
     name = args.input[0]
 
@@ -70,8 +71,6 @@ def node_configure(args, config_path: Path, nodes_config_path: Path):
         with open(ncp, 'wt') as fd:
             OmegaConf.save(cfg, fd)
 
-        return 0
+        return cfg
     except Exception as err:
         raise err
-
-        return 1

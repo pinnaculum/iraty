@@ -66,6 +66,8 @@ iraty --ipfs run site|ipfs ls
 Create a new config for an IPFS node with the **node-config** command
 (this will open your *EDITOR*), and specify the node you want to use
 with **--node**. The default IPFS node configuration is called *local*.
+You will be asked if you want to register the remote pinning
+services listed in the config.
 
 ```sh
 iraty node-config ripfs1
@@ -149,15 +151,15 @@ A div with some markdown that includes an embedded IPFS file, with an image:
 ```yaml
 body:
   div:
-  - p:
-    # Hello
+  - p: |-
+      # Hello
 
-    File contents .. ${cat:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
+      File contents .. ${cat:QmeomffUNfmQy76CQGy9NdmqEnnHU9soCexBnGU3ezPHVH}
 
-  - p:
-    # h1
+  - p: |-
+      # h1
 
-    Second paragraph
+      Second paragraph
 
   - img:
       _src: 'https://example.com/someimage.png'
