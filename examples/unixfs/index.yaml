@@ -1,0 +1,12 @@
+# This example shows how to use the 'unixfs_ls' resolver
+
+body:
+  # UnixFS listing of /ipns/dist.ipfs.io, only show .html files
+  - div:
+      .: ${unixfs_ls:/ipns/dist.ipfs.io, .html$}
+
+  # UnixFS listing of /ipns/dist.ipfs.io, show all files
+  # with a maximum of 20 files listed
+  # The 3rd argument is the link type to generate (httpgw, ipfs, or empty)
+  - div:
+      .: ${unixfs_ls:/ipns/dist.ipfs.io, .*, '', 20}

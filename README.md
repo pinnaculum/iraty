@@ -304,7 +304,17 @@ to be included *in situ*, just use the *.* operator:
 .: ${include:.head.yml}
 ```
 
+## unixfs_ls
 
+*unixfs_ls* gets the contents of an IPFS UnixFS directory, and returns it
+as an HTML list (*ul*). The second argument is a regular expression to
+filter files.
+
+Checkout [the unixfs example](https://gitlab.com/cipres/iraty/-/tree/master/examples/unixfs).
+
+```yaml
+.: ${unixfs_ls:/ipns/dist.ipfs.io, .html$}
+```
 
 # Name origin
 

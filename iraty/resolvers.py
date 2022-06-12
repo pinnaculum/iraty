@@ -2,6 +2,7 @@ import base64
 import sys
 import urllib.request
 import hashlib
+import re
 from urllib.parse import urlparse
 
 from datetime import datetime
@@ -155,9 +156,68 @@ def block(block_name: str):
     return OmegaConf.create({f'block_{block_name}': None})
 
 
+def unixfs_ls(path: str,
+              regex: str,
+              gwurl: str = 'https://dweb.link',
+              limit: int = 0):
+    """
+    Generate a listing of a UnixFS directory, rendering it as an HTML
+    list.
+
+    :param path: IPFS object path to list
+    :param regex: Regular expression to use to filter UnixFS entries with
+    :param gwurl: URL of the IPFS HTTP gateway to generate links with
+    :param limit: Maximum number of entries to list (0 means no limit)
+
+    Examples:
+
+    .: ${unixfs_ls:ipns://ipfs.io, .*}
+    .: ${unixfs_ls:/ipns/dist.ipfs.io, .*, 'https://ipfs.io', 0}
+    """
+
+    node = {'ul': []}
+
+    try:
+        count = 0
+        listing = ipfs_client.ls(path)
+
+        for entry in listing['Objects'].pop()['Links']:
+            if limit > 0 and count >= limit:
+                break
+
+            cid = entry['Hash']
+
+            match = re.search(rf'{regex}', entry['Name'])
+            if not match:
+                continue
+
+            if gwurl == 'ipfs' and 0:
+                # TODO: handle CIDv0 conversion
+                href = f'ipfs://{cid}'
+            elif gwurl.startswith('https'):
+                href = f'{gwurl}/ipfs/{cid}'
+            elif not gwurl:
+                href = f'https://dweb.link/ipfs/{cid}'
+
+            node['ul'].append({
+                'li': {
+                    'a': {
+                        '_href': href,
+                        '_': entry['Name']
+                    }
+                }
+            })
+            count += 1
+    except Exception as err:
+        print(f'unixfs_ls({path}) error: {err}', file=sys.stderr)
+
+    return node
+
+
 OmegaConf.register_new_resolver("block", block)
 OmegaConf.register_new_resolver("csum_hex", csum_hex)
 OmegaConf.register_new_resolver("include", include)
+OmegaConf.register_new_resolver("unixfs_ls", unixfs_ls)
 OmegaConf.register_new_resolver("cat", cat)
 OmegaConf.register_new_resolver("cat64", cat64)
 OmegaConf.register_new_resolver(
