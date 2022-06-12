@@ -129,6 +129,7 @@ class IratySiteConfig:
     """
     Holds the configuration for an iraty website
     """
+
     def __init__(self, cfg_path, args):
         self.path = cfg_path
         self.args = args
@@ -319,6 +320,8 @@ class Iraty:
             return None
 
         if output:
+            cid = None
+
             if self.sitecfg.c.ipfs_output or self.command == 'ipfs-deploy':
                 out = self.output_dom(dom)
                 cid = self.ipfs_add(out)
@@ -332,6 +335,9 @@ class Iraty:
                     print(cid, file=sys.stdout)
             else:
                 self.output_dom(dom, fd=sys.stdout)
+
+            if cid:
+                self.ipns_publish(cid)
 
         return dom
 
@@ -424,6 +430,8 @@ class Iraty:
         except Exception:
             traceback.print_exc()
         else:
+            cid = None
+
             if self.sitecfg.c.ipfs_output or self.command == 'ipfs-deploy':
                 cid = self.ipfs_add(str(self.outdirp))
 
@@ -443,6 +451,50 @@ class Iraty:
                     for root, dirs, files in os.walk(str(self.outdirp)):
                         for file in files:
                             print(os.path.join(root, file), file=sys.stdout)
+
+            if cid:
+                self.ipns_publish(cid)
+
+    def ipns_genkey(self, name: str, type: str = 'ed25519'):
+        return self.iclient.key.gen(name, type)
+
+    def ipns_publish(self, cid):
+        pk_id = None
+        kn = self.args.ipns_key_name
+        kid = self.args.ipns_key_id
+
+        if not kn and not kid:
+            return
+
+        res = self.iclient.key.list()
+
+        if res and 'Keys' in res:
+            for key in res['Keys']:
+                name = key.get('Name')
+                _id = key.get('Id')
+
+                if (kn and name == kn) or (kid and kid == _id):
+                    pk_id = _id
+                    break
+        else:
+            raise Exception('Cannot list IPNS keys')
+
+        if not pk_id and kn:
+            key = self.ipns_genkey(kn)
+            pk_id = key['Id']
+        elif pk_id:
+            # Publish
+            for att in range(0, 3):
+                try:
+                    resp = self.iclient.name.publish(cid, key=pk_id)
+                    key = resp['Name']
+
+                    print(f'/ipns/{key}', file=sys.stdout)
+                    break
+                except Exception as err:
+                    print(f'Error publishing to {pk_id}: {err}', file=sys.stderr)
+        else:
+            raise Exception('Inexistent key. Please specify a key name with --ipns-name')
 
 
 def list_themes():

@@ -54,14 +54,13 @@ def cat_raw(u: str):
                 data = response.read()
 
             return data
-        if url.scheme in ['ipfs'] or not url.scheme:
-            # ipfs:// or raw cid/path
+        elif url.scheme in ['ipfs', 'ipns'] or not url.scheme:
+            # ipfs:// or ipns:// raw cid/path
 
             if url.scheme and url.hostname:
+                path = f'/{url.scheme}/' + url.hostname
                 if url.path != '/':
-                    path = url.hostname + url.path
-                else:
-                    path = url.hostname
+                    path += url.path
             else:
                 path = u
 
@@ -83,7 +82,7 @@ def cat(url: str):
 
     Examples:
 
-    p: ${cat:ipns://ipfs.io}
+    p: ${cat:ipns://ipfs.io/index.html}
     """
 
     data = cat_raw(url)

@@ -96,6 +96,15 @@ iraty -i --pin-remote run site
 iraty --pr --rps=pinata2 ipfs-deploy site
 ```
 
+You can also publish your website to an IPNS key (if you use **--ipns-name**
+it will lookup a key with that name and create it if necessary, if you use
+**--ipns-id** you need to pass the *Id* of an existing key):
+
+```sh
+iraty --ipns-name=my-dwebsite ipfs-deploy site
+iraty --ipns-id=k51qzi5uqu5dkdol6lzkg0q7jaiv2r252ir9t5z8xbheg6g4vzd6lk2ydibe5y ipfs-deploy site
+```
+
 *iraty* caches the configuration for your site in a file called **.iraty.yaml**.
 To reuse the last saved configuration, use **-r** or **--restore** (all
 other config arguments will be ignored):

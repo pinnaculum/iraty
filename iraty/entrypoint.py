@@ -49,6 +49,20 @@ def run():
         help='TCP port for the HTTP service')
 
     parser.add_argument(
+        '--ipns-name',
+        dest='ipns_key_name',
+        type=str,
+        default=None,
+        help='Publish to an IPNS key by key name (create the key if needed)')
+
+    parser.add_argument(
+        '--ipns-id',
+        dest='ipns_key_id',
+        type=str,
+        default=None,
+        help='Publish to an IPNS key id')
+
+    parser.add_argument(
         '-o',
         '--out',
         dest='outdir',

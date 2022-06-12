@@ -17,3 +17,7 @@ body:
 
   # sha512 hex checksum with ipfs://
   - p: ${csum_hex:sha512,ipfs://bafkreihszin3nr7ja7ig3l7enb7fph6oo2zx4tutw5qfaiw2kltmzqtp2i}
+
+  # ipns://
+  - div:
+      p: ${cat:ipns://dist.ipfs.io/index.html}
