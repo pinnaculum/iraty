@@ -49,6 +49,13 @@ def run():
         help='Output directory path (default: "public")')
 
     parser.add_argument(
+        '--purge',
+        dest='purge',
+        action='store_true',
+        default=True,
+        help='Purge output directory before rendering')
+
+    parser.add_argument(
         '-t',
         '--theme',
         dest='theme',
@@ -56,11 +63,11 @@ def run():
         help='Theme to use')
 
     parser.add_argument(
-        '--list-themes',
-        dest='list_themes',
+        '-r',
+        dest='restore_config',
         action='store_true',
         default=False,
-        help='List all available themes')
+        help='Restore last saved site configuration (.iraty.yaml)')
 
     parser.add_argument(
         '-pr',

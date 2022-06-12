@@ -9,6 +9,9 @@ This tool is designed for the distributed web, and the HTML documents produced c
 easily be puslished to IPFS. Because YAML enforces indentation, the structure
 of your documents is easy to read and this lets you concentrate on the content.
 
+*If you think that using bits of YAML to create websites is insane and totally
+stupid, you'll feel right at home here.*
+
 # Install
 
 You only need python3. Install from the latest released wheel using pip:
@@ -74,6 +77,15 @@ Specify the name of the remote pinning service registered on your go-ipfs node:
 
 ```sh
 iraty -i --pin-remote=pinata run site
+```
+
+*iraty* caches the configuration for your site in a file called **.iraty.yaml**.
+To reuse the last saved configuration, use **-r** or **--restore** (all
+other config arguments will be ignored):
+
+```sh
+iraty -r run site
+iraty --restore serve site
 ```
 
 You can also pass a file. Convert and print a document to stdout with:

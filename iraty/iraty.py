@@ -3,7 +3,6 @@ import os
 import os.path
 import io
 import inspect
-import tempfile
 import markdown
 import traceback
 import shutil
@@ -121,12 +120,89 @@ def convert(node, dom, parent=None):
         handle_textnode(pn, node)
 
 
+class IratySiteConfig:
+    """
+    Holds the configuration for an iraty website
+    """
+    def __init__(self, cfg_path, args):
+        self.path = cfg_path
+        self.args = args
+        self._oc = {}
+
+    @property
+    def c(self):
+        return self._oc
+
+    def exists(self):
+        return self.path.is_file()
+
+    def init(self):
+        if self.exists() and self.args.restore_config:
+            try:
+                with open(self.path, 'rt') as fd:
+                    self._oc = OmegaConf.load(fd)
+
+                # Basic check
+                for attr in ['icf_version', 'theme',
+                             'output_path', 'ipfs_output',
+                             'ipfs_maddr', 'ipfs_rps_name',
+                             'http_serve_port']:
+                    if attr not in self.c:
+                        raise ValueError(f'Attribute {attr} missing from '
+                                         f'config file {self.path}')
+            except Exception:
+                self._oc = self.from_args()
+                self.sync()
+        else:
+            # Not restoring config, use from command-line args
+            self._oc = self.from_args()
+            self.sync()
+
+    def from_args(self):
+        return OmegaConf.create({
+            'icf_version': 1,
+            'theme': self.args.theme,
+            'output_path': self.args.outdir,
+            'ipfs_output': self.args.ipfsout,
+            'ipfs_maddr': self.args.ipfsmaddr,
+            'ipfs_rps_name': self.args.pintoremote,
+            'http_serve_port': self.args.httpport
+        })
+
+    def sync(self):
+        with open(self.path, 'wt') as fd:
+            OmegaConf.save(self.c, fd)
+
+
 class Iraty:
-    def __init__(self, command, ipfs_client, args):
+    def __init__(self, command, input_path, ipfs_client, args):
         self.command = command
         self.iclient = ipfs_client
         self.args = args
-        self.outdirp = Path(self.args.outdir)
+        self.input_path = input_path
+
+        if self.input_path.is_dir():
+            cfgpath = self.input_path.joinpath('.iraty.yaml')
+        else:
+            cfgpath = Path(os.getcwd()).joinpath('.iraty.yaml')
+
+        self.sitecfg = IratySiteConfig(cfgpath, self.args)
+        self.sitecfg.init()
+
+        self.outdirp = Path(self.sitecfg.c.output_path)
+
+    def start(self):
+        if os.getenv('HOME') == str(self.outdirp):
+            raise Exception('Not using HOME as output, dude')
+
+        self.outdirp.mkdir(parents=True, exist_ok=True)
+
+        if self.sitecfg.exists() and self.args.purge:
+            for root, dirs, files in os.walk(self.outdirp):
+                for file in files:
+                    # Only purge html files
+                    if file.endswith('.html'):
+                        os.unlink(os.path.join(root, file))
 
     def ipfs_add(self, src):
         try:
@@ -183,10 +259,10 @@ class Iraty:
     def process_file(self, path: Path, dirdest: Path = None, output=False):
         dom = html()
         try:
-            theme_name = os.path.basename(self.args.theme)
+            theme_name = os.path.basename(self.sitecfg.c.theme)
             themedp = Path(pkg_resources.resource_filename(
                 'iraty.themes',
-                self.args.theme
+                self.sitecfg.c.theme
             ))
 
             with open(str(path), 'rt') as fd:
@@ -232,14 +308,14 @@ class Iraty:
             return None
 
         if output:
-            if self.args.ipfsout:
+            if self.sitecfg.c.ipfs_output:
                 out = self.output_dom(dom)
                 cid = self.ipfs_add(out)
 
                 if cid:
-                    if self.args.pintoremote:
+                    if self.sitecfg.c.ipfs_rps_name:
                         # Pin to remote service
-                        self.ipfs_pinremote(self.args.pintoremote, cid)
+                        self.ipfs_pinremote(self.sitecfg.c.ipfs_rps_name, cid)
 
                     print(cid, file=sys.stdout)
             else:
@@ -267,13 +343,6 @@ class Iraty:
                 return layoutp
 
     def process_directory(self, path: Path):
-        if self.args.outdir:
-            # TODO: cleanup existing output dir
-            outd = Path(self.args.outdir)
-            outd.mkdir(parents=True, exist_ok=True)
-        else:
-            outd = Path(tempfile.mkdtemp())
-
         try:
             for root, dirs, files in os.walk(str(path)):
                 rr = root.replace(str(path), '').lstrip(os.sep)
@@ -282,7 +351,7 @@ class Iraty:
                     fp = Path(root).joinpath(file)
                     layoutp = self.find_closest_layout(fp, path)
 
-                    ddest = outd.joinpath(rr)
+                    ddest = self.outdirp.joinpath(rr)
                     ddest.mkdir(parents=True, exist_ok=True)
 
                     if fp.name.startswith('.'):
@@ -335,21 +404,23 @@ class Iraty:
         except Exception:
             traceback.print_exc()
         else:
-            if self.args.ipfsout:
-                cid = self.ipfs_add(str(outd))
+            if self.sitecfg.c.ipfs_output:
+                cid = self.ipfs_add(str(self.outdirp))
 
                 if cid:
-                    if self.args.pintoremote:
+                    if self.sitecfg.c.ipfs_rps_name:
                         # Pin to remote service
-                        if self.ipfs_pinremote(self.args.pintoremote, cid):
+                        if self.ipfs_pinremote(self.sitecfg.c.ipfs_rps_name,
+                                               cid):
                             print(cid, file=sys.stdout)
                     else:
                         print(cid, file=sys.stdout)
             else:
                 if self.args.httpserve or self.command == 'serve':
-                    http_serve(outd, port=self.args.httpport)
+                    http_serve(self.outdirp,
+                               port=self.sitecfg.c.http_serve_port)
                 else:
-                    for root, dirs, files in os.walk(str(outd)):
+                    for root, dirs, files in os.walk(str(self.outdirp)):
                         for file in files:
                             print(os.path.join(root, file), file=sys.stdout)
 
@@ -425,18 +496,19 @@ def iraty(args):
         # Set global client
         resolvers.ipfs_client = iclient
 
-    ira = Iraty(command, iclient, args)
-    path = Path(filein)
+    input_path = Path(filein)
+    ira = Iraty(command, input_path, iclient, args)
+    ira.start()
 
-    if not path.exists():
-        print(f'{path} does not exist', file=sys.stderr)
+    if not input_path.exists():
+        print(f'{input_path} does not exist', file=sys.stderr)
         sys.exit(1)
 
-    if path.is_file():
-        resolvers.root_path = path.parent
-        jenv.loader = FileSystemLoader(str(path.parent))
-        ira.process_file(path, output=True)
-    elif path.is_dir():
-        resolvers.root_path = path
-        jenv.loader = FileSystemLoader(str(path))
-        ira.process_directory(path)
+    if input_path.is_file():
+        resolvers.root_input_path = input_path.parent
+        jenv.loader = FileSystemLoader(str(input_path.parent))
+        ira.process_file(input_path, output=True)
+    elif input_path.is_dir():
+        resolvers.root_input_path = input_path
+        jenv.loader = FileSystemLoader(str(input_path))
+        ira.process_directory(input_path)
