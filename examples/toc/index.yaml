@@ -7,8 +7,32 @@ body:
   - .: ${toc:., 0, "Table of contents (depth 0)"}
   
   - h1: Section 1 (first)
-  - p:
+  - p: |-
       This is section 1
+
+      # Markdown section 1
+
+      A section inside some markdown
+
+      ## Markdown section 2
+
+      A section inside some markdown (h2)
+
+      ### Markdown section 3
+
+      A section inside some markdown (h3)
+
+      #### Markdown section 4
+
+      A section inside some markdown (h4)
+
+      ##### Markdown section 5
+
+      A section inside some markdown (h5)
+
+      ###### Markdown section 6
+
+      A section inside some markdown (h6)
 
   - h2: Section 2
   - p:

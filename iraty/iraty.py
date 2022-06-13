@@ -4,7 +4,6 @@ import os.path
 import io
 import inspect
 import re
-import markdown
 import traceback
 import shutil
 import functools
@@ -19,6 +18,9 @@ from domonic.html import *  # noqa
 from omegaconf import OmegaConf
 from omegaconf.basecontainer import BaseContainer
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+import markdown
+from markdown.extensions.toc import TocExtension
 
 from .config import node_get_config
 from .config import node_configure
@@ -51,6 +53,7 @@ def assert_v(version: str, minimum: str = '0.4.23',
 
 
 client.assert_version = assert_v
+md = markdown.Markdown(extensions=[TocExtension(permalink=True)])
 
 
 def http_serve(directory: Path, port=8000):
@@ -69,9 +72,26 @@ def http_serve(directory: Path, port=8000):
         httpd.serve_forever()
 
 
-def handle_textnode(pn, text: str):
+def handle_textnode(dom, pn, text: str):
+    def toke(tokens):
+        # Recursively process tokens from the markdown toc extension
+        for token in tokens:
+            dom._toc.links.append({
+                'tag': f'h{token["level"]}',
+                'name': token['name'],
+                'link': f'#{token["id"]}'
+            })
+
+            if len(token['children']) > 0:
+                toke(token['children'])
+
     if pn.tagName in ['p', 'span']:
-        pn.innerText(markdown.markdown(text))
+        html = md.convert(text)
+
+        # Process toc tokens
+        toke(md.toc_tokens)
+
+        pn.innerText(html)
     else:
         pn.innerText(text)
 
@@ -86,7 +106,7 @@ def section_id(content: str):
 
 
 def convert_post(dom, parentNode, node, tagn, content):
-    if tagn in ['h1', 'h2', 'h3'] and isinstance(content, str):
+    if tagn in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and isinstance(content, str):
         name, link = section_id(content)
 
         # Add permalink
@@ -102,7 +122,7 @@ def convert_post(dom, parentNode, node, tagn, content):
 def create_element(pn, tag, content):
     parent = pn
 
-    if tag in ['h1', 'h2']:
+    if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
         # Create section
         name, link = section_id(content)
         sec = section(_id=name)
@@ -128,7 +148,7 @@ def convert(node, dom, parent=None):
                 continue
             elif tagn == '_' and is_str(n):
                 # Tag text contents
-                handle_textnode(pn, n)
+                handle_textnode(dom, pn, n)
             elif tagn == 'jinja':
                 args = {}
 
@@ -157,7 +177,7 @@ def convert(node, dom, parent=None):
     elif isinstance(node, list):
         [convert(subn, dom, parent=pn) for subn in node]
     elif isinstance(node, str):
-        handle_textnode(pn, node)
+        handle_textnode(dom, pn, node)
 
 
 class IratySiteConfig:
@@ -296,12 +316,10 @@ class Iraty:
         for tocn in tocdefs:
             depth = int(tocn.depth)
 
-            if depth == 1:
-                atags = ['h1']
-            elif depth == 2:
-                atags = ['h1', 'h2']
-            elif depth >= 3 or depth == 0:
-                atags = ['h1', 'h2', 'h3']
+            if depth in range(1, 7):
+                atags = [f'h{d}' for d in range(1, depth + 1)]
+            elif depth == 0:
+                atags = [f'h{d}' for d in range(1, 7)]
 
             title = h3(tocn.title)
             top = div(title)
@@ -317,12 +335,17 @@ class Iraty:
                 e = li(link)
                 e.setAttribute('list-style', 'none')
 
+                # TODO: use levels and not tags, this is boring
                 if tocl['tag'] == 'h1':
                     e.setAttribute(
                         'style', 'text-indent: -15px; list-style: none;')
-                elif tocl['tag'] == 'h3':
+                elif tocl['tag'] in ['h2', 'h3', 'h4', 'h5', 'h6']:
+                    level = int(tocl['tag'].replace('h', ''))
+                    margin = level * 10
+
                     e.setAttribute(
-                        'style', 'margin-left: 10px; list-style: position;')
+                        'style',
+                        f'margin-left: {margin}px; list-style: position;')
 
                 ulel.appendChild(e)
 
