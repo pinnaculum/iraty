@@ -3,6 +3,7 @@ import os
 import os.path
 import io
 import inspect
+import re
 import markdown
 import traceback
 import shutil
@@ -14,8 +15,7 @@ import subprocess
 from pathlib import Path
 
 from domonic.dom import document
-from domonic.html import html
-from domonic.html import render
+from domonic.html import *  # noqa
 from omegaconf import OmegaConf
 from omegaconf.basecontainer import BaseContainer
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -79,22 +79,57 @@ def handle_textnode(pn, text: str):
 jenv = Environment(autoescape=select_autoescape())
 
 
+def section_id(content: str):
+    san = ''.join(re.split('[^a-zA-Z0-9\\s]*', content.lower()))
+    san = re.sub('\\s+', '-', san)
+    return san, f'#{san}'
+
+
+def convert_post(dom, parentNode, node, tagn, content):
+    if tagn in ['h1', 'h2', 'h3'] and isinstance(content, str):
+        name, link = section_id(content)
+
+        # Add permalink
+        node.appendChild(a('¶', _href=link))
+
+        dom._toc.links.append({
+            'tag': tagn,
+            'name': content,
+            'link': link
+        })
+
+
+def create_element(pn, tag, content):
+    parent = pn
+
+    if tag in ['h1', 'h2']:
+        # Create section
+        name, link = section_id(content)
+        sec = section(_id=name)
+        pn.appendChild(sec)
+        parent = sec
+
+    elem = document.createElement(tag)
+    parent.appendChild(elem)
+    return elem
+
+
 def convert(node, dom, parent=None):
     pn = parent if parent is not None else dom
 
     if isinstance(node, dict):
-        for elem, n in node.items():
-            if len(elem) > 1 and elem.startswith('_'):
+        for tagn, n in node.items():
+            if len(tagn) > 1 and tagn.startswith('_'):
                 # Attribute
-                pn.setAttribute(elem.replace('_', ''), n)
-            elif elem in ['.', '..']:
+                pn.setAttribute(tagn.replace('_', ''), n)
+            elif tagn in ['.', '..']:
                 # in situ
                 convert(n, dom, parent=pn)
                 continue
-            elif elem == '_' and is_str(n):
+            elif tagn == '_' and is_str(n):
                 # Tag text contents
                 handle_textnode(pn, n)
-            elif elem == 'jinja':
+            elif tagn == 'jinja':
                 args = {}
 
                 if is_str(n):
@@ -114,11 +149,11 @@ def convert(node, dom, parent=None):
                         document.createTextNode(tmpl.render(**args))
                     )
             else:
-                # Create HTML tag
-                tag = document.createElement(elem)
-                pn.appendChild(tag)
+                elem = create_element(pn, tagn, n)
 
-                convert(node[elem], dom, parent=tag)
+                convert(node[tagn], dom, parent=elem)
+
+                convert_post(dom, pn, elem, tagn, n)
     elif isinstance(node, list):
         [convert(subn, dom, parent=pn) for subn in node]
     elif isinstance(node, str):
@@ -178,6 +213,19 @@ class IratySiteConfig:
     def sync(self):
         with open(self.path, 'wt') as fd:
             OmegaConf.save(self.c, fd)
+
+
+def dom_find(dom, tag: str):
+    found = []
+    for node in dom.iter():
+        if node.name == tag:
+            found.append(node)
+    return found
+
+
+class TOC:
+    def __init__(self):
+        self.links = []
 
 
 class Iraty:
@@ -243,6 +291,43 @@ class Iraty:
             return True
 
     def output_dom(self, dom, dest: Path = None, fd=None):
+        tocdefs = dom_find(dom, 'toc')
+
+        for tocn in tocdefs:
+            depth = int(tocn.depth)
+
+            if depth == 1:
+                atags = ['h1']
+            elif depth == 2:
+                atags = ['h1', 'h2']
+            elif depth >= 3 or depth == 0:
+                atags = ['h1', 'h2', 'h3']
+
+            title = h3(tocn.title)
+            top = div(title)
+
+            ulel = ul()
+            top.appendChild(ulel)
+
+            for tocl in dom._toc.links:
+                if tocl['tag'] not in atags:
+                    continue
+
+                link = a(tocl['name'], _href=tocl['link'])
+                e = li(link)
+                e.setAttribute('list-style', 'none')
+
+                if tocl['tag'] == 'h1':
+                    e.setAttribute(
+                        'style', 'text-indent: -15px; list-style: none;')
+                elif tocl['tag'] == 'h3':
+                    e.setAttribute(
+                        'style', 'margin-left: 10px; list-style: position;')
+
+                ulel.appendChild(e)
+
+            tocn.parentNode.replaceChild(top, tocn)
+
         if dest:
             output = open(str(dest), 'wb')
         else:
@@ -270,6 +355,7 @@ class Iraty:
 
     def process_file(self, path: Path, dirdest: Path = None, output=False):
         dom = html()
+        dom._toc = TOC()
         try:
             theme_name = os.path.basename(self.sitecfg.c.theme)
             themedp = Path(pkg_resources.resource_filename(

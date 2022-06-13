@@ -1,0 +1,7 @@
+icf_version: 1
+theme: awsm-tasman
+output_path: public
+ipfs_output: false
+ipfs_maddr: null
+ipfs_rps_name: null
+http_serve_port: 8000

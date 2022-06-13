@@ -156,6 +156,30 @@ def block(block_name: str):
     return OmegaConf.create({f'block_{block_name}': None})
 
 
+def toc(scope: str, depth: int = 0,
+        title='Table of contents'):
+    """
+    Create a Table of Contents (toc) for the given scope and depth
+
+    :param scope: The scope of the toc ('.' generates a toc for the current
+    document)
+    :param depth: toc depth (if depth equals 1, only shows h1, etc ..)
+    :param title: Title of the toc
+
+    ${toc:.}
+    ${toc:., 0}
+    ${toc:., 3, "TOC"}
+    """
+
+    return OmegaConf.create({
+        'toc': {
+            '_scope': scope,
+            '_depth': depth,
+            '_title': title
+        }
+    })
+
+
 def unixfs_ls(path: str,
               regex: str,
               gwurl: str = 'https://dweb.link',
@@ -192,7 +216,7 @@ def unixfs_ls(path: str,
                 continue
 
             if gwurl == 'ipfs' and 0:
-                # TODO: handle CIDv0 conversion
+                # TODO: handle CIDv0 conversion without using a 3rd-party lib
                 href = f'ipfs://{cid}'
             elif gwurl.startswith('https'):
                 href = f'{gwurl}/ipfs/{cid}'
@@ -223,3 +247,4 @@ OmegaConf.register_new_resolver("cat64", cat64)
 OmegaConf.register_new_resolver(
     "dtnow_iso",
     lambda: datetime.now().isoformat(timespec='seconds', sep=' '))
+OmegaConf.register_new_resolver("toc", toc)

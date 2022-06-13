@@ -304,6 +304,18 @@ to be included *in situ*, just use the *.* operator:
 .: ${include:.head.yml}
 ```
 
+## toc
+
+*toc* generates a *Table of contents* for the given *scope* (at the moment,
+only the *.* scope is implemented) and *depth*.
+
+Checkout [the toc example](https://gitlab.com/cipres/iraty/-/tree/master/examples/toc).
+
+```yaml
+.: ${toc:.}
+.: ${toc:., 3, "Table of contents (depth 3)"}
+```
+
 ## unixfs_ls
 
 *unixfs_ls* gets the contents of an IPFS UnixFS directory, and returns it
