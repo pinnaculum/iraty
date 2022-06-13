@@ -1,0 +1,11 @@
+__pycache__/
+*.swp
+*.swo
+*.orig
+*.py[cod]
+*$py.class
+.tox
+build/
+dist/
+tmp/
+.iraty.yaml
