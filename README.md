@@ -1,6 +1,7 @@
-# iraty
+![logo](https://gitlab.com/cipres/iraty/-/raw/master/media/img/logo-128.png)
 
-*iraty* is a Python tool to easily create and publish static websites
+*iraty* (partly named after the *Ossau-Iraty* French cheese) is a Python tool to
+easily create and publish static websites
 using a simple template syntax. Documents are written in YAML and can make use
 of *resolvers* (special functions called by the
 [YAML engine](https://github.com/omry/omegaconf)).
@@ -43,6 +44,7 @@ The following commands are supported:
 * **ipfs-deploy**: same as **run**, but always imports to IPFS
 * **node-config** (or **nc**): configure an IPFS node (the default node is *local*)
 * **serve**: generate the website and serve it over HTTP
+* **lint**: check the YAML syntax of an input directory
 * **list-resolvers**: list all available resolvers and their documentation
 * **list-themes**: list all available themes
 
@@ -55,6 +57,8 @@ the CID of the root IPFS directory is printed to stdout.
 Use **--theme** or **-t** to change the theme (the default theme is
 *mercury*, use **-t null** to use no theme).
 
+## Generate the website
+
 ```sh
 iraty run site
 iraty --theme=sakura-dark -o html run site
@@ -62,6 +66,8 @@ iraty --theme=sakura-dark -o html run site
 iraty --ipfs run site
 iraty --ipfs run site|ipfs ls
 ```
+
+## Configure an IPFS node
 
 Create a new config for an IPFS node with the **node-config** command
 (this will open your *EDITOR*), and specify the node you want to use
@@ -73,6 +79,14 @@ services listed in the config.
 iraty node-config ripfs1
 iraty --node=ripfs1 ipfs-deploy site
 ```
+If you want to force the use of a specific IPFS node (will soon be
+deprecated by **--node** and **node-config**):
+
+```sh
+iraty --ipfs-maddr '/dns/localhost/tcp/5051/http' ipfs-deploy site
+```
+
+## Serve the website over HTTP
 
 If you want to serve the website over HTTP on your machine, use
 **serve**, and set the HTTP port with **--port** (the default is TCP port: *8000*).
@@ -81,12 +95,7 @@ If you want to serve the website over HTTP on your machine, use
 iraty --port 9000 serve site
 ```
 
-If you want to force the use of a specific IPFS node (will soon be
-deprecated by **--node** and **node-config**):
-
-```sh
-iraty --ipfs-maddr '/dns/localhost/tcp/5051/http' ipfs-deploy site
-```
+## Remote pinning
 
 *Remote pinning* is supported via the **--pin-remote** (or **--pr**) switch.
 Specify the name of the remote pinning service registered on your go-ipfs node
@@ -98,6 +107,8 @@ iraty -i --pin-remote run site
 iraty --pr --rps=pinata2 ipfs-deploy site
 ```
 
+## Publish to an IPNS key
+
 You can also publish your website to an IPNS key (if you use **--ipns-name**
 it will lookup a key with that name and create it if necessary, if you use
 **--ipns-id** you need to pass the *Id* of an existing key):
@@ -107,6 +118,28 @@ iraty --ipns-name=my-dwebsite ipfs-deploy site
 iraty --ipns-id=k51qzi5uqu5dkdol6lzkg0q7jaiv2r252ir9t5z8xbheg6g4vzd6lk2ydibe5y ipfs-deploy site
 ```
 
+## Multiple languages (i18n)
+
+If you wish to produce a multi-language website, your *YAML* files should
+include the [ISO 639-1 language code](https://en.wikipedia.org/wiki/ISO_639-1)
+in the filename suffix. Examples:
+
+- index.**en**.yaml
+- photos.**es**.yaml
+- article.**pt**.yaml
+
+You need to pass the languages list with **--langs** to specify which
+languages you want to support (a language selector is included).
+
+```sh
+iraty --langs=en,fr,es,de run site
+iraty --lang-default=fr --langs=en,fr run site
+```
+
+Checkout [the basic 18n example](https://gitlab.com/cipres/iraty/-/tree/master/examples/i18n).
+
+## Restoring a config
+
 *iraty* caches the configuration for your site in a file called **.iraty.yaml**.
 To reuse the last saved configuration, use **-r** or **--restore** (all
 other config arguments will be ignored):
@@ -115,6 +148,8 @@ other config arguments will be ignored):
 iraty -r run site
 iraty --restore serve site
 ```
+
+## Passing a single file
 
 You can also pass a file. Convert and print a document to stdout with:
 

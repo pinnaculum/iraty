@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import base64
 import sys
 import urllib.request
@@ -141,6 +143,16 @@ def csum_hex(algo: str, url: str):
         raise Irate(f'Empty object: {url}')
 
 
+def cssl(href: str):
+    return OmegaConf.create({
+        'link': {
+            '_rel': 'stylesheet',
+            '_type': 'text/css',
+            '_href': href
+        }
+    })
+
+
 def block(block_name: str):
     """
     Create a block in a layout
@@ -154,6 +166,17 @@ def block(block_name: str):
     ${block:top}
     """
     return OmegaConf.create({f'block_{block_name}': None})
+
+
+def lang_selector():
+    """
+    Return an HTML language selector
+    """
+    return OmegaConf.create({
+        'jinja': {
+            'from': 'lang-selector.jinja2'
+        }
+    })
 
 
 def toc(scope: str, depth: int = 0,
@@ -240,6 +263,7 @@ def unixfs_ls(path: str,
 
 OmegaConf.register_new_resolver("block", block)
 OmegaConf.register_new_resolver("csum_hex", csum_hex)
+OmegaConf.register_new_resolver("cssl", cssl)
 OmegaConf.register_new_resolver("include", include)
 OmegaConf.register_new_resolver("unixfs_ls", unixfs_ls)
 OmegaConf.register_new_resolver("cat", cat)
@@ -248,3 +272,4 @@ OmegaConf.register_new_resolver(
     "dtnow_iso",
     lambda: datetime.now().isoformat(timespec='seconds', sep=' '))
 OmegaConf.register_new_resolver("toc", toc)
+OmegaConf.register_new_resolver("lang_selector", lang_selector)

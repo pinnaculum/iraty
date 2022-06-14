@@ -4,4 +4,6 @@ ipfshttpclient @ git+https://gitlab.com/cipres/py-ipfs-http-client.git@pinremote
 Jinja2>=3.1.2
 markdown>=3.3
 omegaconf>=2.1.1
+iso639-lang==2.0.1
 requests==2.27.1
+yamllint>=1.26.2

@@ -12,10 +12,13 @@ import socketserver
 import pkg_resources
 import subprocess
 from pathlib import Path
+from typing import Union, IO
+from urllib.parse import urlparse
 
 from domonic.dom import document
 from domonic.html import *  # noqa
 from omegaconf import OmegaConf
+from omegaconf import DictConfig
 from omegaconf.basecontainer import BaseContainer
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -25,6 +28,8 @@ from markdown.extensions.toc import TocExtension
 from .config import node_get_config
 from .config import node_configure
 from .config import node_configure_default
+
+from .omega import shove
 
 try:
     from html5print import HTMLBeautifier
@@ -40,10 +45,15 @@ from ipfshttpclient.exceptions import ErrorResponse
 
 from . import resolvers
 from . import appdirs
+from . import i18n
 
 
 def is_str(obj):
     return isinstance(obj, str)
+
+
+def is_intfloat(obj):
+    return isinstance(obj, int) or isinstance(obj, float)
 
 
 def assert_v(version: str, minimum: str = '0.4.23',
@@ -54,6 +64,10 @@ def assert_v(version: str, minimum: str = '0.4.23',
 
 client.assert_version = assert_v
 md = markdown.Markdown(extensions=[TocExtension(permalink=True)])
+
+
+def relative(path: Path, dirp: Path):
+    return os.path.relpath(str(path), start=str(dirp))
 
 
 def http_serve(directory: Path, port=8000):
@@ -69,10 +83,16 @@ def http_serve(directory: Path, port=8000):
     with socketserver.TCPServer(("", port), Handler) as httpd:
         print(f'Serving via HTTP at: http://localhost:{port}', file=sys.stdout)
 
-        httpd.serve_forever()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            httpd.shutdown()
+            httpd.server_close()
+        except OSError as err:
+            print(str(err), file=sys.stderr)
 
 
-def handle_textnode(dom, pn, text: str):
+def handle_textnode(dom, pn, text: str, lang=None):
     def toke(tokens):
         # Recursively process tokens from the markdown toc extension
         for token in tokens:
@@ -98,6 +118,11 @@ def handle_textnode(dom, pn, text: str):
 
 jenv = Environment(autoescape=select_autoescape())
 
+assets_root = Path(pkg_resources.resource_filename(
+    'iraty.assets',
+    ''
+))
+
 
 def section_id(content: str):
     san = ''.join(re.split('[^a-zA-Z0-9\\s]*', content.lower()))
@@ -119,10 +144,10 @@ def convert_post(dom, parentNode, node, tagn, content):
         })
 
 
-def create_element(pn, tag, content):
+def create_element(pn, tag, content, lang=None):
     parent = pn
 
-    if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+    if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and is_str(content):
         # Create section
         name, link = section_id(content)
         sec = section(_id=name)
@@ -134,30 +159,49 @@ def create_element(pn, tag, content):
     return elem
 
 
-def convert(node, dom, parent=None):
+dots = ['.' * x for x in range(1, 4)]
+
+
+def convert(ira, node, dom, destdir: Path, parent=None, lang=None):
     pn = parent if parent is not None else dom
+    rel_destdir = relative(destdir, ira.outdirp)
 
     if isinstance(node, dict):
-        for tagn, n in node.items():
-            if len(tagn) > 1 and tagn.startswith('_'):
+        for tagn, value in node.items():
+            if len(tagn) > 1 and tagn.startswith('_') and \
+                    (is_str(value) or is_intfloat(value)):
                 # Attribute
-                pn.setAttribute(tagn.replace('_', ''), n)
-            elif tagn in ['.', '..']:
+                attr = re.sub('_', '', tagn, count=1)
+                aattrs = ['href_auto', 'src_auto']
+
+                if attr in aattrs:
+                    url = urlparse(value)
+
+                    if not url.scheme:
+                        comps = rel_destdir.split('/')
+
+                        hrefl = relative(value, comps[0] if comps else '')
+                        pn.setAttribute(attr.replace('_auto', ''), hrefl)
+                    else:
+                        pn.setAttribute(attr, value)
+                else:
+                    pn.setAttribute(attr, value)
+            elif tagn in dots or pn.tagName in dots:
                 # in situ
-                convert(n, dom, parent=pn)
+                convert(ira, value, dom, destdir, parent=pn)
                 continue
-            elif tagn == '_' and is_str(n):
+            elif tagn == '_' and is_str(value):
                 # Tag text contents
-                handle_textnode(dom, pn, n)
+                handle_textnode(dom, pn, value, lang=lang)
             elif tagn == 'jinja':
                 args = {}
 
-                if is_str(n):
-                    tmpl = jenv.from_string(n)
-                elif isinstance(n, dict):
-                    args = n.get('with', {})
-                    tpath = n.get('from')
-                    template = n.get('template')
+                if is_str(value):
+                    tmpl = jenv.from_string(value)
+                elif isinstance(value, dict):
+                    args = value.get('with', {})
+                    tpath = value.get('from')
+                    template = value.get('template')
 
                     if is_str(tpath):
                         tmpl = jenv.get_template(tpath)
@@ -165,19 +209,20 @@ def convert(node, dom, parent=None):
                         tmpl = jenv.from_string(template)
 
                 if tmpl:
+                    args.update({'langs': ira.site_langs})
                     pn.appendChild(
                         document.createTextNode(tmpl.render(**args))
                     )
             else:
-                elem = create_element(pn, tagn, n)
+                elem = create_element(pn, tagn, value, lang=lang)
 
-                convert(node[tagn], dom, parent=elem)
+                convert(ira, node[tagn], dom, destdir, parent=elem, lang=lang)
 
-                convert_post(dom, pn, elem, tagn, n)
+                convert_post(dom, pn, elem, tagn, value)
     elif isinstance(node, list):
-        [convert(subn, dom, parent=pn) for subn in node]
+        [convert(ira, subn, dom, destdir, parent=pn, lang=lang) for subn in node]
     elif isinstance(node, str):
-        handle_textnode(dom, pn, node)
+        handle_textnode(dom, pn, node, lang=lang)
 
 
 class IratySiteConfig:
@@ -227,7 +272,8 @@ class IratySiteConfig:
             'ipfs_output': self.args.ipfsout,
             'ipfs_maddr': self.args.ipfsmaddr,
             'ipfs_rps_name': self.args.rps_name,
-            'http_serve_port': self.args.httpport
+            'http_serve_port': self.args.httpport,
+            'language_default': self.args.lang_default_iso639
         })
 
     def sync(self):
@@ -270,6 +316,8 @@ class Iraty:
         self.sitecfg.init()
 
         self.outdirp = Path(self.sitecfg.c.output_path)
+        self.lang_default = i18n.lang_get(self.sitecfg.c.language_default)
+        self.site_langs = []
 
     def start(self):
         if os.getenv('HOME') == str(self.outdirp):
@@ -280,9 +328,15 @@ class Iraty:
         if self.sitecfg.exists() and self.args.purge:
             for root, dirs, files in os.walk(self.outdirp):
                 for file in files:
-                    # Only purge html files
-                    if file.endswith('.html'):
+                    # Only purge html/css files
+                    if file.endswith('.html') or file.endswith('.css'):
                         os.unlink(os.path.join(root, file))
+
+        for iso639 in self.args.langs.split(','):
+            lang = i18n.lang_get(iso639)
+
+            if lang and lang not in self.site_langs:
+                self.site_langs.append(lang)
 
     def ipfs_add(self, src):
         try:
@@ -333,7 +387,6 @@ class Iraty:
 
                 link = a(tocl['name'], _href=tocl['link'])
                 e = li(link)
-                e.setAttribute('list-style', 'none')
 
                 # TODO: use levels and not tags, this is boring
                 if tocl['tag'] == 'h1':
@@ -376,9 +429,16 @@ class Iraty:
         else:
             return output
 
-    def process_file(self, path: Path, dirdest: Path = None, output=False):
+    def process_file(self,
+                     source: Union[Path, IO, DictConfig],
+                     destdir_root: Path = None,
+                     i18n_out=True,
+                     basename=None,
+                     output=False):
+        lang = None
         dom = html()
         dom._toc = TOC()
+
         try:
             theme_name = os.path.basename(self.sitecfg.c.theme)
             themedp = Path(pkg_resources.resource_filename(
@@ -386,47 +446,93 @@ class Iraty:
                 self.sitecfg.c.theme
             ))
 
-            with open(str(path), 'rt') as fd:
-                foc = OmegaConf.load(fd)
+            destdir = destdir_root
 
-                if theme_name != 'null' and themedp.is_dir():
-                    dest = self.outdirp.joinpath(f'{theme_name}.css')
+            if destdir:
+                destdir.mkdir(parents=True, exist_ok=True)
 
-                    if not dest.is_file():
-                        # Copy the theme's main CSS
-                        shutil.copy(
-                            str(themedp.joinpath(f'{theme_name}.css')),
-                            str(self.outdirp)
-                        )
+            if isinstance(source, Path) and source.is_file():
+                basename, lang = i18n.language_target(source)
 
-                    # Compute the CSS's relative path to the root output dir
-                    if dirdest:
-                        css_relp = os.path.relpath(
-                            str(dest), start=str(dirdest))
-                    else:
-                        css_relp = f'{theme_name}.css'
+                with open(source, 'rt') as fd:
+                    foc = OmegaConf.load(fd)
+            elif isinstance(source, io.StringIO):
+                with open(source, 'rt') as fd:
+                    foc = OmegaConf.load(fd)
+            elif isinstance(source, DictConfig):
+                foc = source
+            else:
+                raise Exception(f'Invalid source input: {source}')
 
-                    # Reference the CSS in <head>
-                    css_link = {
-                        'link': {
-                            '_rel': 'stylesheet',
-                            '_type': 'text/css',
-                            '_href': css_relp
-                        }
+            if theme_name != 'null' and themedp.is_dir():
+                dest = self.outdirp.joinpath(f'{theme_name}.css')
+
+                if not dest.is_file():
+                    # Copy the theme's main CSS
+                    shutil.copy(
+                        str(themedp.joinpath(f'{theme_name}.css')),
+                        str(self.outdirp)
+                    )
+
+                # Compute the CSS's relative path to the root output dir
+                if destdir_root:
+                    css_relp = os.path.relpath(
+                        str(dest), start=str(destdir))
+                else:
+                    css_relp = f'{theme_name}.css'
+
+                # Reference the CSS in <head>
+                css_link = {
+                    'link': {
+                        '_rel': 'stylesheet',
+                        '_type': 'text/css',
+                        '_href': css_relp
                     }
+                }
 
-                    if foc.get('head'):
-                        foc.head.setdefault('..', css_link)
-                    else:
-                        foc = OmegaConf.merge(foc, {'head': css_link})
+                utf8_meta = {
+                    'meta': {
+                        '_content': 'text/html; charset=utf-8',
+                        '_http-equiv': 'Content-Type',
+                    }
+                }
 
-                convert(
-                    OmegaConf.to_container(foc, resolve=True),
-                    dom
-                )
+                head = foc.get('head')
+                if not head:
+                    foc['head'] = {}
+                    head = foc['head']
+
+                shove(head, css_link)
+                shove(head, utf8_meta)
+
+                sel_outp = self.outdirp.joinpath('lang-selector.css')
+                sel_relpath = os.path.relpath(str(sel_outp), start=str(destdir))
+
+                sel_css_link = {
+                    'link': {
+                        '_rel': 'stylesheet',
+                        '_type': 'text/css',
+                        '_href': sel_relpath
+                    }
+                }
+
+                if len(self.site_langs) > 1:
+                    shove(foc.get('head'), sel_css_link)
+
+                    shove(foc.get('body'), {
+                        '.': '${lang_selector:}'
+                    }, pos='first')
+
+            convert(
+                self,
+                OmegaConf.to_container(foc, resolve=True),
+                dom,
+                destdir,
+                lang=lang
+            )
         except Exception:
             traceback.print_exc()
-            return None
+            return None, None, None
 
         if output:
             cid = None
@@ -448,7 +554,8 @@ class Iraty:
             if cid:
                 self.ipns_publish(cid)
 
-        return dom
+        destp = destdir.joinpath(f'{basename}.html')
+        return dom, lang, destp
 
     def get_target_rps(self):
         rps = self.ipfs_node_cfg.get('ipfs_rps_default')
@@ -478,30 +585,39 @@ class Iraty:
                 return layoutp
 
     def process_directory(self, path: Path):
+        # Copy necessary assets
+        css_langsel = assets_root.joinpath('lang-selector.css')
+
+        if css_langsel.is_file():
+            shutil.copy(css_langsel, self.outdirp)
+
+        target_langs = []
+
         try:
-            for root, dirs, files in os.walk(str(path)):
+            for root, dirs, files in os.walk(path):
                 rr = root.replace(str(path), '').lstrip(os.sep)
 
                 for file in files:
                     fp = Path(root).joinpath(file)
                     layoutp = self.find_closest_layout(fp, path)
 
-                    ddest = self.outdirp.joinpath(rr)
-                    ddest.mkdir(parents=True, exist_ok=True)
+                    ddest_def = self.outdirp.joinpath(rr)
+                    ddest_def.mkdir(parents=True, exist_ok=True)
 
                     if fp.name.startswith('.'):
                         # Ignore dot files (reserved)
                         continue
 
-                    ldom, blocks = None, []
+                    dom_layout, blocks = None, []
                     if layoutp:
                         # Parse the layout
-                        ldom = self.process_file(layoutp, dirdest=ddest)
+                        dom_layout, lang, _ = self.process_file(layoutp,
+                                                                destdir_root=ddest_def)
 
-                        if ldom:
+                        if dom_layout:
                             # Parse declared blocks
 
-                            for node in ldom.iter():
+                            for node in dom_layout.iter():
                                 if node.name.startswith('block_'):
                                     blocks.append(node)
 
@@ -511,12 +627,20 @@ class Iraty:
                                 return blk
 
                     if fp.name.endswith('.yaml') or fp.name.endswith('.yml'):
-                        fname = file.replace('.yaml', '.html').replace(
-                            '.yml', '.html')
-                        dest = ddest.joinpath(fname)
-                        dom = self.process_file(fp, dirdest=ddest)
+                        basename, lang = i18n.language_target(fp)
+                        if lang and lang not in target_langs:
+                            target_langs.append(lang)
 
-                        if ldom and len(blocks) > 0:
+                        if lang:
+                            ddest = self.outdirp.joinpath(lang.pt1).joinpath(rr)
+                            ddest.mkdir(parents=True, exist_ok=True)
+
+                        else:
+                            ddest = ddest_def
+
+                        dom, _lang, dest = self.process_file(fp, destdir_root=ddest)
+
+                        if dom_layout and len(blocks) > 0:
                             for node in dom.iter():
                                 if node.name.startswith('block_'):
                                     blk = findblock(node.name)
@@ -528,16 +652,40 @@ class Iraty:
                                     blk.parentNode.replaceChild(
                                         node.firstChild, blk)
 
-                        if ldom:
-                            # Layout mode
-                            self.output_dom(ldom, dest=dest)
-                        elif dom:
-                            self.output_dom(dom, dest=dest)
+                        dom_target = dom_layout if dom_layout else dom
+
+                        if not dom_target:
+                            raise Exception('Empty DOM')
+
+                        self.output_dom(dom_target, dest=dest)
                     else:
-                        # Copy other files
-                        shutil.copy(fp, str(ddest))
+                        if fp.suffix not in ['.jinja2', '.yaml']:
+                            # Copy other files
+                            shutil.copy(fp, str(ddest_def))
+
+            if target_langs:
+                # At least one target language. Write the main index to redirect
+                # to the default language
+
+                redir = OmegaConf.create({
+                    'head': {
+                        'meta': [{
+                            '_http-equiv': 'Refresh',
+                            '_content': f'0; url={self.lang_default.pt1}/'
+                        }]
+                    }
+                })
+
+                dom, _l, dest = self.process_file(
+                    redir, destdir_root=self.outdirp,
+                    basename='index',
+                    i18n_out=False
+                )
+
+                self.output_dom(dom, dest=dest)
         except Exception:
             traceback.print_exc()
+            return 1
         else:
             cid = None
 
@@ -554,8 +702,8 @@ class Iraty:
                         print(cid, file=sys.stdout)
             else:
                 if self.args.httpserve or self.command == 'serve':
-                    http_serve(self.outdirp,
-                               port=self.sitecfg.c.http_serve_port)
+                    return http_serve(self.outdirp,
+                                      port=self.sitecfg.c.http_serve_port)
                 else:
                     for root, dirs, files in os.walk(str(self.outdirp)):
                         for file in files:
@@ -563,6 +711,8 @@ class Iraty:
 
             if cid:
                 self.ipns_publish(cid)
+
+        return 0
 
     def ipns_genkey(self, name: str, type: str = 'ed25519'):
         return self.iclient.key.gen(name, type)
@@ -650,6 +800,36 @@ def list_resolvers():
         print(help)
 
 
+def lint(args):
+    from .config import default_lint_config
+    try:
+        from yamllint import linter
+        from yamllint.config import YamlLintConfig
+    except ImportError:
+        print('The yamllint library is missing', file=sys.stderr)
+        return 1
+
+    cfg = YamlLintConfig(default_lint_config)
+    errc = 0
+
+    for root, dirs, files in os.walk(Path(args.input[0])):
+        for file in files:
+            if not file.endswith('.yaml') or file == '.iraty.yaml':
+                continue
+
+            fp = Path(root).joinpath(file)
+
+            with open(fp, 'rt') as fd:
+                errs = linter.run(fd, cfg)
+
+                for err in errs:
+                    print(f'({fp}): {err}', file=sys.stderr)
+
+                    errc += 1
+
+    return 0 if errc == 0 else 2
+
+
 def iraty(args):
     config_dir = Path(appdirs.user_config_dir('iraty'))
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -667,6 +847,9 @@ def iraty(args):
     elif command == 'list-resolvers':
         list_resolvers()
         sys.exit(0)
+
+    elif command == 'lint':
+        sys.exit(lint(args))
 
     elif command in ['node-config', 'nc']:
         cfg = node_configure(args, config_dir, nodes_config_dir)
@@ -743,8 +926,14 @@ def iraty(args):
     if input_path.is_file():
         resolvers.root_input_path = input_path.parent
         jenv.loader = FileSystemLoader(str(input_path.parent))
-        ira.process_file(input_path, output=True)
+        _dom, _l, _p = ira.process_file(input_path, destdir_root=Path('.'), output=True)
+        sys.exit(0 if _dom else 1)
     elif input_path.is_dir():
         resolvers.root_input_path = input_path
-        jenv.loader = FileSystemLoader(str(input_path))
-        ira.process_directory(input_path)
+        jenv.loader = FileSystemLoader([
+            str(input_path),
+            str(input_path.joinpath('templates')),
+            str(assets_root.joinpath('jinja2')),
+        ])
+
+        sys.exit(ira.process_directory(input_path))

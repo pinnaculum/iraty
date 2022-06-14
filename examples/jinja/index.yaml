@@ -1,5 +1,6 @@
 # This example shows how to embed Jinja2 templates
 
+---
 body:
   # Jinja template from string (no variables passed)
   - jinja: |-

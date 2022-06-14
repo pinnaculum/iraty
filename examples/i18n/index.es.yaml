@@ -1,0 +1,8 @@
+---
+body:
+  - p: |-
+      En castellano
+
+  - a:
+      _href: article/index.html
+      _: Enlace del articulo en castellano

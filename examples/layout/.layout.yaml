@@ -1,3 +1,4 @@
+---
 body:
   # A left-floating div embedding block 'b1'
   - div:

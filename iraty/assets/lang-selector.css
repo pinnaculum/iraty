@@ -1,0 +1,91 @@
+ul.dropdown li a {
+  text-decoration: none;
+}
+
+nav {
+  font-family: monospace;
+  float: right;
+}
+
+ul.dropdown {
+  background: #FFE699;
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+li.toplang {
+  color: red;
+  background: #B7B7FF;
+  display: block;
+  float: left;
+  padding: 1rem;
+  position: relative;
+  text-decoration: none;
+  transition-duration: 0.5s;
+  border: 1px solid black;
+  font-family: Georgia;
+  font-size: 1.1em;
+}
+
+li.lang {
+  font-family: Georgia;
+  font-size: 1.2em;
+  padding: 10px;
+  margin: 2px;
+  border: 1px solid lightsteelblue;
+}
+
+li.lang:hover,
+li.lang:focus-within {
+  background: lightsteelblue;
+  cursor: pointer;
+  border: 2px solid black;
+  font-size: 1.3em;
+}
+
+li.lang:focus-within a {
+  font-size: 1.2em;
+  outline: none;
+}
+
+li.toplang:hover,
+li.toplang:focus-within {
+  background: darkorange;
+  cursor: pointer;
+}
+
+li.toplang:focus-within a {
+  outline: none;
+}
+
+ul li ul.dropdown {
+  background: transparent;
+  visibility: hidden;
+  opacity: 0;
+  min-width: 5rem;
+  position: absolute;
+  transition: all 0.5s ease;
+  margin-top: 5px;
+  left: 0;
+  display: none;
+}
+
+ul li ul.dropdown li {
+  background: cornsilk;
+  color: brown;
+}
+
+ul li:hover > ul.dropdown,
+ul li:focus-within > ul.dropdown,
+ul li ul.dropdown:hover,
+ul li ul.dropdown:focus {
+  visibility: visible;
+  opacity: 1;
+  display: block
+}
+
+ul li ul.dropdown li {
+  clear: both;
+  width: 100%;
+}

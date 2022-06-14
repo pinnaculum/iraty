@@ -1,0 +1,12 @@
+---
+body:
+  - p: |-
+      In English !
+
+  - a:
+      _href: article/index.html
+      _: Link to article in English
+
+  - img:
+      _src_auto: ./logo-128.png
+      _: Link to image

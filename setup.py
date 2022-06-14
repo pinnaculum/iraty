@@ -27,6 +27,11 @@ setup(
     packages=found_packages,
     install_requires=install_reqs,
     package_data={
+        'iraty.assets': [
+            '*.css',
+            '*.js',
+            'jinja2/*.jinja2'
+        ],
         'iraty.themes': [
             'attricss/*/*.css',
             '*/*.css'

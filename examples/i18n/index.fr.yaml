@@ -1,0 +1,8 @@
+---
+body:
+  - p: |-
+      En Français !
+
+  - a:
+      _href: article/index.html
+      _: Lien vers un article en Français

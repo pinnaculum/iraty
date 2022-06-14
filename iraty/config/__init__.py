@@ -5,6 +5,30 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 
+default_lint_config = '''
+---
+
+yaml-files:
+  - '*.yaml'
+  - '*.yml'
+
+rules:
+  empty-lines: disable
+  empty-values: disable
+  indentation: enable
+  key-duplicates: enable
+  key-ordering: disable
+  line-length: disable
+  new-line-at-end-of-file: disable
+  new-lines: enable
+  octal-values: disable
+  quoted-strings: disable
+  trailing-spaces: enable
+  truthy:
+    level: warning
+'''
+
+
 ipfs_nodecfg_yaml_template = '''
 # IPFS node API multiaddr
 ipfs_api_maddr: '/dns/localhost/tcp/5001/http'

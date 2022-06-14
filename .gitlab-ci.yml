@@ -7,24 +7,44 @@ variables:
   WHEEL_ARTIFACT_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/continuous-${CI_COMMIT_BRANCH}/${CI_PROJECT_NAME}-${VERSION}-py3-none-any.whl"
   DOCKER_REPOSITORY: "${CI_REGISTRY}/cipres/${CI_PROJECT_NAME}"
 
+.ipfs_script_template:
+  before_script:
+    - ipfs init
+    - nohup ipfs daemon &
+
 stages:
   - build
   - release
   - docker
 
 build:
+  extends:
+    - .ipfs_script_template
   stage: build
   only:
     - master
+    - devel
+    - i18n
   script:
     - python3 -m pip install --upgrade pip
     - python3 -m venv venv
     - source venv/bin/activate
 
     - pip install wheel
+    - pip install -r requirements-dev.txt
+
+    - flake8 iraty
 
     - python3 setup.py build install
     - python3 setup.py sdist bdist_wheel
+
+    - |-
+      for ex in examples/{basic,cat,layout,unixfs}; do
+        iraty lint $ex
+        iraty run $ex
+      done
+
+      iraty --langs en,fr run examples/i18n
 
   artifacts:
     paths:

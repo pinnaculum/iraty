@@ -1,0 +1,7 @@
+---
+body:
+  - img:
+      _src_auto: ../logo-128.png
+
+  - p: |-
+      Articulo en castellano.

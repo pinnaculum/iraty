@@ -63,6 +63,20 @@ def run():
         help='Publish to an IPNS key id')
 
     parser.add_argument(
+        '--lang-default',
+        dest='lang_default_iso639',
+        type=str,
+        default='en',
+        help='ISO-639-1 code of the default language')
+
+    parser.add_argument(
+        '--langs',
+        dest='langs',
+        type=str,
+        default='en',
+        help='List of ISO-639-1 codes for target languages (separated by a comma)')
+
+    parser.add_argument(
         '-o',
         '--out',
         dest='outdir',

@@ -1,11 +1,12 @@
 # This example shows how to use the 'toc' resolver
 # to generate a "Table of Contents"
 
+---
 body:
   - .: ${toc:., 1, "Table of contents (depth 1)"}
   - .: ${toc:., 3, "Table of contents (depth 3)"}
   - .: ${toc:., 0, "Table of contents (depth 0)"}
-  
+
   - h1: Section 1 (first)
   - p: |-
       This is section 1

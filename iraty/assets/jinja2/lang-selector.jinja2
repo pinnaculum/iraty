@@ -1,0 +1,18 @@
+<header>
+<nav role="navigation">
+    <ul>
+      <li class="toplang">
+        <a href="#">Language</a>
+        <ul class="dropdown">
+{% for lang in langs %}
+          <li class="lang">
+					  <a href="/{{ lang.pt1 }}" class="lang_{{ lang.pt1 }}">{{ lang.name }}</a>
+          </li>
+{% endfor %}
+        </ul>
+      </li>
+    </ul>
+</nav>
+</header>
+
+<br/>
