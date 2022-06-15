@@ -174,7 +174,7 @@ The only difference with Docker is that you have to create a volume (here we
 generate the site from *$HOME/site* to *$HOME/public*):
 
 ```sh
-sudo docker run -v $HOME:/h -t registry.gitlab.com/cipres/iraty:latest -o /h/public run /h/site
+sudo docker run -v $HOME:/h -t registry.gitlab.com/cipres/iraty:latest iraty -o /h/public run /h/site
 ```
 
 # Examples
